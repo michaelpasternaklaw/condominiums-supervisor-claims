@@ -137,6 +137,7 @@ h1 { margin-bottom: 2px; font-family: Georgia, "Noto Serif Hebrew", serif; font-
 .search-progress { color: var(--muted); font-size: .86rem; }
 
 .content-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 30px; padding: 28px clamp(18px, 4vw, 56px) 50px; }
+.content-grid > * { min-width: 0; }
 
 .filters {
   align-self: start;
@@ -156,6 +157,7 @@ h1 { margin-bottom: 2px; font-family: Georgia, "Noto Serif Hebrew", serif; font-
 .filters-header button { border: 0; background: none; color: var(--focus); font-size: .88rem; }
 .filters label { margin-top: 8px; color: var(--ink-2); font-size: .88rem; font-weight: 700; }
 select { min-height: 43px; padding: 8px 11px; background: #fff; border: 1px solid #c7d0da; border-radius: 7px; }
+.filters select { width: 100%; min-width: 0; max-width: 100%; }
 .filter-note { margin-top: 18px; padding: 14px; border-right: 3px solid var(--accent); background: var(--accent-soft); color: #5d4828; font-size: .84rem; }
 .filter-note strong { display: block; margin-bottom: 3px; }
 .filter-note p { margin: 0; }
