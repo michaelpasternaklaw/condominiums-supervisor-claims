@@ -202,6 +202,23 @@ function detailItem(label, value) {
   return `<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
 }
 
+function formatOperativeExcerpt(value) {
+  const sections = String(value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\s*\n+\s*/g, "\n")
+    .replace(/(^|[\s:;])(?:\d{1,2}\s+)?([א-ת])\s*\.\s*(?=[א-ת])/g, "$1\n$2. ")
+    .replace(/\s+\.(\d{1,3})\s*(?=[א-ת])/g, "\n$1. ")
+    .replace(/\s+(\d{1,3})\s*\.\s*(?=[א-ת])/g, "\n$1. ")
+    .replace(/\s+\(([א-ת]|\d{1,3})\)\s*(?=[א-ת])/g, "\n($1) ")
+    .split(/\n+/)
+    .map((section) => section.trim())
+    .filter(Boolean);
+
+  return `<div class="operative-excerpt">${sections
+    .map((section) => `<p>${escapeHtml(section)}</p>`)
+    .join("")}</div>`;
+}
+
 function openDetails(record) {
   const categories = (record.categories || []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
   el["dialog-content"].innerHTML = `
@@ -220,7 +237,7 @@ function openDetails(record) {
       ${detailItem("ייצוג", record.representatives)}
     </div>
     ${categories ? `<div class="dialog-section"><h3>קטגוריות</h3><div class="tags">${categories}</div></div>` : ""}
-    ${record.operativeExcerpt ? `<div class="dialog-section"><h3>קטע אופרטיבי לאיתור</h3><p>${escapeHtml(record.operativeExcerpt)}</p></div>` : ""}
+    ${record.operativeExcerpt ? `<div class="dialog-section"><h3>קטע אופרטיבי לאיתור</h3>${formatOperativeExcerpt(record.operativeExcerpt)}</div>` : ""}
     <div class="dialog-section"><h3>מעמד המקור</h3><p>${escapeHtml(record.precedentialNote)}</p></div>
     <div class="dialog-actions">
       <a class="button" href="${escapeHtml(record.pdf)}" target="_blank" rel="noopener">פתח PDF</a>

@@ -239,6 +239,25 @@ dialog::backdrop { background: rgba(7,19,36,.6); backdrop-filter: blur(3px); }
 .dialog-section { margin-top: 24px; }
 .dialog-section h3 { margin-bottom: 6px; font-size: 1rem; }
 .dialog-section p { color: #334761; }
+.operative-excerpt {
+  max-width: 100%;
+  margin-top: 10px;
+  padding: 14px 16px;
+  background: #f7f8fa;
+  border-right: 3px solid var(--accent);
+  border-radius: 6px;
+}
+.operative-excerpt p {
+  margin: 0;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.operative-excerpt p + p {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
 .dialog-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 26px; }
 .button.secondary { background: #fff; color: var(--ink); }
 .button.tertiary { border-color: #c8d0da; background: #eef2f6; color: var(--ink); }
