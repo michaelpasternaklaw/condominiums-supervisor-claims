@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="מאגר מקומי לחיפוש בפסקי דין בתחום בתים משותפים והמפקח על רישום מקרקעין">
+  <meta name="theme-color" content="#10233f">
+  <title>מאגר הפסיקה המשפחתי</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310233f'/%3E%3Cpath d='M16 18h32v5H16zm4 9h24v22H20z' fill='%23f6f1e8'/%3E%3Cpath d='M25 32h14M25 38h14M25 44h9' stroke='%23b58a48' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#results">דלג לתוצאות</a>
+  <header class="topbar">
+    <div class="brand" aria-label="מאגר הפסיקה המשפחתי">
+      <span class="brand-mark" aria-hidden="true">פ</span>
+      <div>
+        <strong>מאגר הפסיקה</strong>
+        <span>בתים משותפים ומקרקעין</span>
+      </div>
+    </div>
+    <div class="corpus-status" id="corpus-status" aria-live="polite">טוען את המאגר…</div>
+  </header>
+
+  <main class="workspace">
+    <section class="search-panel" aria-labelledby="search-heading">
+      <div class="search-heading-row">
+        <div>
+          <h1 id="search-heading">חיפוש בפסקי דין</h1>
+          <p>מספר תיק, צד, נושא, לשכה או ביטוי מתוך פסק הדין</p>
+        </div>
+        <button class="mobile-filter-button" id="mobile-filter-button" type="button" aria-expanded="false" aria-controls="filters">סינון</button>
+      </div>
+
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m2.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
+        <label class="visually-hidden" for="query">חיפוש במאגר</label>
+        <input id="query" type="search" autocomplete="off" placeholder="לדוגמה: מצלמות פרטיות, 12/54/2021, רטיבות…">
+        <button id="clear-query" class="clear-query" type="button" aria-label="נקה חיפוש" hidden>×</button>
+      </div>
+
+      <div class="search-mode-row">
+        <label class="switch-label">
+          <input id="full-text-toggle" type="checkbox">
+          <span class="switch" aria-hidden="true"></span>
+          <span>חיפוש בתוך הטקסט המלא</span>
+        </label>
+        <span class="search-progress" id="search-progress" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <aside class="filters" id="filters" aria-label="סינון תוצאות">
+        <div class="filters-header">
+          <h2>סינון</h2>
+          <button id="reset-filters" type="button">איפוס</button>
+        </div>
+
+        <label for="office-filter">לשכה</label>
+        <select id="office-filter"><option value="">כל הלשכות</option></select>
+
+        <label for="year-filter">שנה</label>
+        <select id="year-filter"><option value="">כל השנים</option></select>
+
+        <label for="category-filter">קטגוריה</label>
+        <select id="category-filter"><option value="">כל הקטגוריות</option></select>
+
+        <label for="type-filter">סוג החלטה</label>
+        <select id="type-filter"><option value="">כל הסוגים</option></select>
+
+        <div class="filter-note">
+          <strong>לפני שמצטטים</strong>
+          <p>יש לקרוא את המסמך המלא ולבדוק ערעורים, ביטול או שינוי בדין.</p>
+        </div>
+      </aside>
+
+      <section class="results-section" id="results" aria-labelledby="results-title">
+        <div class="results-toolbar">
+          <div>
+            <h2 id="results-title">תוצאות</h2>
+            <span id="result-count">—</span>
+          </div>
+          <label class="sort-control" for="sort-select">
+            <span>מיון</span>
+            <select id="sort-select">
+              <option value="date-desc">החדש ביותר</option>
+              <option value="date-asc">הישן ביותר</option>
+              <option value="case">מספר תיק</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="loading-state" class="state-card">טוען פסקי דין…</div>
+        <div id="error-state" class="state-card error" hidden>
+          <strong>המאגר לא נטען</strong>
+          <span>נסו לרענן את העמוד.</span>
+        </div>
+        <div id="empty-state" class="state-card" hidden>
+          <strong>לא נמצאו תוצאות</strong>
+          <span>נסו ניסוח קצר יותר או הסירו אחד מהסינונים.</span>
+        </div>
+        <div class="result-list" id="result-list"></div>
+        <nav class="pagination" id="pagination" aria-label="דפדוף בתוצאות"></nav>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <span>מאגר עבודה משפחתי · המקורות אינם תחליף למאגר משפטי מוסמך</span>
+    <span id="updated-at"></span>
+  </footer>
+
+  <dialog id="case-dialog" aria-labelledby="dialog-title">
+    <div class="dialog-shell">
+      <button class="dialog-close" id="dialog-close" type="button" aria-label="סגור">×</button>
+      <div id="dialog-content"></div>
+    </div>
+  </dialog>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
