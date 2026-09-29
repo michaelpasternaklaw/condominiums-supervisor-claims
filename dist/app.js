@@ -317,22 +317,39 @@ function renderComparison() {
   el["comparison-empty"].hidden = records.length > 0;
   el["comparison-table"].hidden = records.length === 0;
   if (!records.length) return;
-  const fields = [
-    ["מקור ואימות", (r) => `${r.verification} · ${r.sourceStatus}`], ["לשכה ומפקח/ת", (r) => `${r.office} · ${r.adjudicator}`],
-    ["עובדות ותקציר", (r) => r.summary], ["נושאים", (r) => (r.categories || []).join("; ")],
-    ["תוצאה", (r) => r.outcome || "לא אותרה באמינות מספקת"], ["סעדים", (r) => r.relief || "לא חולצו"],
-    ["עמודי ההכרעה", (r) => (r.operativePages || []).join(", ") || "לא אותרו"], ["זיקה לאשדוד", (r) => r.ashdodRelation || "אין"],
-    ["מצב בדיקה", (r) => r.reviewStatus],
-  ];
-  const cols = `180px repeat(${records.length}, minmax(230px, 1fr))`;
-  let html = `<div class="comparison-grid" style="grid-template-columns:${cols}"><div class="comparison-cell comparison-head">שדה</div>`;
-  html += records.map((record) => `<div class="comparison-cell comparison-head"><strong>${escapeHtml(record.caseNumber)}</strong><br><small>${escapeHtml(formatDate(record.date))}</small><br><button data-remove-compare="${escapeHtml(record.id)}">הסרה</button></div>`).join("");
-  for (const [label, getter] of fields) {
-    html += `<div class="comparison-cell comparison-label">${escapeHtml(label)}</div>`;
-    html += records.map((record) => `<div class="comparison-cell"><p>${escapeHtml(getter(record) || "—")}</p></div>`).join("");
-  }
-  html += "</div>";
-  el["comparison-table"].innerHTML = html;
+  const topicCounts = new Map();
+  records.forEach((record) => (record.categories || []).forEach((topic) => topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1)));
+  const commonTopics = [...topicCounts].filter(([, count]) => count === records.length).map(([topic]) => topic);
+  const strongestRank = Math.max(...records.map((record) => record.verificationRank || 0));
+  const strongest = records.filter((record) => record.verificationRank === strongestRank);
+  const ashdodCount = records.filter((record) => record.ashdodRelation).length;
+  const fullTextCount = records.filter((record) => record.hasFullText).length;
+  const overview = `<section class="compare-overview" aria-label="סיכום ההשוואה">
+    <div class="compare-stat"><strong>${records.length}</strong><span>החלטות נבחרו</span></div>
+    <div class="compare-stat"><strong>${fullTextCount}/${records.length}</strong><span>עם טקסט מלא</span></div>
+    <div class="compare-stat"><strong>${ashdodCount}</strong><span>בעלות זיקה לאשדוד</span></div>
+    <div class="compare-insight"><span>המקור החזק בהשוואה</span><strong>${escapeHtml(strongest.map((record) => record.caseNumber).join(" · "))}</strong></div>
+    <div class="compare-insight"><span>נושאים משותפים</span><strong>${escapeHtml(commonTopics.join(" · ") || "לא נמצא נושא משותף לכל ההחלטות")}</strong></div>
+  </section>`;
+  const cards = records.map((record, index) => {
+    const topics = (record.categories || []).map((topic) => `<span class="tag ${commonTopics.includes(topic) ? "common-topic" : ""}">${escapeHtml(topic)}</span>`).join("");
+    const pages = (record.operativePages || []).join(", ");
+    return `<article class="compare-card rank-border-${record.verificationRank}" data-compare-id="${escapeHtml(record.id)}" aria-label="החלטה ${escapeHtml(record.caseNumber)}">
+      <header class="compare-card-head">
+        <div><span class="compare-number">0${index + 1}</span><span class="eyebrow">${escapeHtml(record.type || "החלטה")}</span><h2>${escapeHtml(record.caseNumber)}</h2><p>${escapeHtml(formatDate(record.date))} · ${escapeHtml(record.office || "לשכה לא ידועה")}</p></div>
+        <button class="remove-compare" type="button" data-remove-compare="${escapeHtml(record.id)}" aria-label="הסרת ${escapeHtml(record.caseNumber)} מההשוואה">×</button>
+      </header>
+      <div class="compare-badges"><span class="rank-pill rank-${record.verificationRank}">${escapeHtml(record.verification)}</span>${badge(record.sourceStatus)}${record.ashdodRelation ? badge("זיקה לאשדוד") : ""}</div>
+      <section class="compare-verdict"><span class="compare-label">השורה התחתונה</span><h3>${escapeHtml(record.outcome || "התוצאה לא חולצה באמינות מספקת")}</h3><p>${escapeHtml(record.relief || "הסעדים לא חולצו; יש לעיין במסמך המקור.")}</p>${pages ? `<small>עמודי ההכרעה: ${escapeHtml(pages)}</small>` : ""}</section>
+      <section class="compare-section compare-facts"><span class="compare-label">העובדות בקצרה</span><p>${escapeHtml(record.summary || "אין תקציר זמין. יש לעיין במסמך המקור.")}</p></section>
+      <section class="compare-section"><span class="compare-label">נושאים</span><div class="tags">${topics || `<span class="muted-text">לא סווגו נושאים</span>`}</div></section>
+      <section class="compare-section"><span class="compare-label">זהות ומיקום</span><dl class="compare-details"><div><dt>מפקח/ת</dt><dd>${escapeHtml(record.adjudicator || "לא צוין")}</dd></div><div><dt>יישוב</dt><dd>${escapeHtml(record.municipality || "לא צוין")}</dd></div><div><dt>כתובת</dt><dd>${escapeHtml(record.address || "לא צוינה")}</dd></div></dl></section>
+      ${record.ashdodRelation ? `<section class="compare-ashdod"><span class="compare-label">הזיקה לאשדוד</span><p>${escapeHtml(record.ashdodRelation)}</p></section>` : ""}
+      <section class="compare-section compare-source"><span class="compare-label">מעמד לשימוש משפטי</span><p><strong>${escapeHtml(record.sourceStatus)}</strong> · ${escapeHtml(record.reviewStatus || record.verification)}</p><small>${record.hasFullText ? "מסמך מלא זמין לבדיקה" : "מטא־דאטה בלבד או מקור חיצוני"}</small></section>
+      <footer class="compare-actions"><button class="primary-button" type="button" data-compare-action="details" data-id="${escapeHtml(record.id)}">פרטים וציטוט</button><button type="button" data-compare-action="attach" data-id="${escapeHtml(record.id)}" data-page="${escapeHtml(record.operativePages?.[0] || "")}">הוספה לטענה</button>${record.pdf ? `<a href="${escapeHtml(record.pdf)}" target="_blank" rel="noopener">פתיחת PDF</a>` : ""}</footer>
+    </article>`;
+  }).join("");
+  el["comparison-table"].innerHTML = `${overview}<div class="comparison-board" style="--comparison-columns:${Math.min(records.length, 4)}">${cards}</div>`;
 }
 
 function defaultWorkspace() {
@@ -531,7 +548,15 @@ function bindEvents() {
     if (button.dataset.dialogAction === "attach") openAttachDialog(record, button.dataset.page || "");
   });
   el["clear-comparison"].addEventListener("click", () => { state.compare.clear(); el["compare-count"].textContent = "0"; renderComparison(); renderResults(); });
-  el["comparison-table"].addEventListener("click", (event) => { const button = event.target.closest("[data-remove-compare]"); if (button) toggleCompare(button.dataset.removeCompare); });
+  el["comparison-table"].addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-compare]");
+    if (remove) { toggleCompare(remove.dataset.removeCompare); return; }
+    const action = event.target.closest("[data-compare-action]");
+    if (!action) return;
+    const record = state.recordsById.get(action.dataset.id);
+    if (action.dataset.compareAction === "details") openDetails(record);
+    if (action.dataset.compareAction === "attach") openAttachDialog(record, action.dataset.page || "");
+  });
   el["workspace-unlock"].addEventListener("click", openSecureDialog);
   el["workspace-lock"].addEventListener("click", lockWorkspace);
   el["secure-form"].addEventListener("submit", async (event) => {

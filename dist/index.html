@@ -86,9 +86,12 @@
     </section>
 
     <section class="view page-view" id="view-compare" data-view="compare" hidden>
-      <div class="page-heading"><div><span class="eyebrow">עד ארבע החלטות</span><h1>השוואת אסמכתאות</h1><p>השוו מעמד מקור, עובדות, תוצאה וסעד לפני בחירת הפסיקה לכתב הטענות.</p></div><button id="clear-comparison" class="secondary-button" type="button">נקה השוואה</button></div>
-      <div id="comparison-empty" class="state-card"><strong>עדיין לא נבחרו החלטות</strong><span>הוסיפו החלטות מתוצאות החיפוש.</span></div>
-      <div id="comparison-table" class="comparison-table" hidden></div>
+      <div class="page-heading compare-heading">
+        <div><span class="eyebrow">בחירת אסמכתאות לכתב הטענות</span><h1>השוואת החלטות</h1><p>השורה התחתונה, הסעדים ומעמד המקור מוצגים תחילה. אחריהם ניתן להשוות את העובדות והזיקה לתיק.</p></div>
+        <div class="action-row"><button class="secondary-button" type="button" data-view-target="search">הוספת החלטה</button><button id="clear-comparison" class="secondary-button" type="button">ניקוי הכול</button></div>
+      </div>
+      <div id="comparison-empty" class="state-card compare-empty"><strong>לא נבחרו החלטות להשוואה</strong><span>חזרו לחיפוש והוסיפו עד ארבע החלטות רלוונטיות.</span><button class="primary-button" type="button" data-view-target="search">מעבר לחיפוש</button></div>
+      <div id="comparison-table" class="comparison-surface" hidden></div>
     </section>
 
     <section class="view page-view" id="view-workspace" data-view="workspace" hidden>

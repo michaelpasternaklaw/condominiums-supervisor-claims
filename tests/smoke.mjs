@@ -30,6 +30,10 @@ for (const id of cachedIds) assert.match(html, new RegExp(`id=["']${id}["']`), `
 assert.match(app, /record\.duplicateGroup \|\| record\.isTest/);
 assert.doesNotMatch(app, /fetch\(["']https?:\/\//);
 assert.doesNotMatch(app, /קטע אופרטיבי לאיתור/);
+assert.match(app, /comparison-board/);
+assert.match(app, /השורה התחתונה/);
+assert.doesNotMatch(app, /comparison-grid/);
+assert.match(html, /class="comparison-surface"/);
 
 const ashdod = catalog.records.filter((record) => record.ashdodRelation);
 assert.equal(ashdod.filter((record) => record.sourceStatus === "רשמי").length, 58);
