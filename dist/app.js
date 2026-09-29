@@ -208,6 +208,7 @@ function resultCard(record) {
       <div class="badge-line"><span class="rank-pill rank-${record.verificationRank}">${escapeHtml(record.verification)}</span>${badge(record.sourceStatus)}${record.ashdodRelation ? badge("אשדוד") : ""}${record.hasFullText ? badge("טקסט מלא") : ""}</div>
       <h3>${escapeHtml(record.office || "לשכה לא ידועה")}${record.adjudicator ? ` · ${escapeHtml(record.adjudicator)}` : ""}</h3>
       <p>${escapeHtml(summary)}</p>
+      ${record.outcome ? `<div class="decision-result"><strong>תוצאה:</strong> ${escapeHtml(record.outcome)}${record.relief ? ` · <strong>סעדים:</strong> ${escapeHtml(record.relief)}` : ""}</div>` : ""}
       ${fullText?.snippet ? `<p class="why-row">${escapeHtml(fullText.snippet)}</p>` : ""}
       <div class="meta-line">${record.municipality ? `<span>יישוב: ${escapeHtml(record.municipality)}</span>` : ""}${record.address ? `<span>כתובת: ${escapeHtml(record.address)}</span>` : ""}${record.pages ? `<span>${record.pages} עמודים</span>` : ""}</div>
       <div class="why-row"><strong>מדוע דורג כאן:</strong> ${escapeHtml(reasons)}${escapeHtml(pages)}</div>
@@ -272,6 +273,7 @@ async function pageExcerpt(record, page) {
 async function openDetails(record) {
   const match = state.fullTextMatches.get(record.id);
   const matchedPage = match?.pages?.[0] || "";
+  const operativePage = record.operativePages?.[0] || "";
   const excerpt = match?.snippet || await pageExcerpt(record, matchedPage);
   el["dialog-content"].innerHTML = `
     <div class="dialog-kicker">${escapeHtml(record.type)} · ${escapeHtml(record.verification)}</div>
@@ -280,10 +282,15 @@ async function openDetails(record) {
     <div class="dialog-summary">${escapeHtml(record.summary || "אין תקציר זמין")}</div>
     <div class="detail-grid">${detailItem("לשכה", record.office)}${detailItem("מפקח/ת", record.adjudicator)}${detailItem("תובעים", record.plaintiffs)}${detailItem("נתבעים", record.defendants)}${detailItem("יישוב", record.municipality)}${detailItem("כתובת", record.address)}${detailItem("מעמד מקור", record.sourceStatus)}${detailItem("אימות", record.reviewStatus)}${detailItem("זיקה לאשדוד", record.ashdodRelation)}</div>
     <div class="dialog-section"><h3>נושאים</h3><div class="tags">${(record.categories || []).map((tag) => badge(tag, "tag")).join("")}</div></div>
-    ${record.operativeExcerpt ? `<div class="dialog-section"><h3>קטע אופרטיבי לאיתור</h3><div class="page-hit">${escapeHtml(record.operativeExcerpt)}</div></div>` : ""}
+    ${record.operativeExcerpt ? `<div class="dialog-section operative-section">
+      <div class="operative-header"><div><span class="eyebrow">מה נפסק בפועל</span><h3>הכרעה וסעדים</h3></div><span class="pill">חילוץ אוטומטי · ודאות ${escapeHtml(record.operativeConfidence || "לא סווגה")}</span></div>
+      <div class="operative-summary">${detailItem("תוצאה", record.outcome)}${detailItem("סעדים שאותרו", record.relief)}${detailItem("עמודי מקור", (record.operativePages || []).join(", "))}</div>
+      <blockquote class="page-hit operative-text">${escapeHtml(record.operativeExcerpt)}</blockquote>
+      <p class="operative-warning">הנוסח חולץ אוטומטית מסוף ההחלטה. לפני ציטוט או הסתמכות יש לפתוח את ה־PDF ולאמת את הנוסח ואת מספרי העמודים.</p>
+    </div>` : `<div class="dialog-section operative-missing"><h3>הכרעה אופרטיבית</h3><p>לא אותר קטע אופרטיבי באמינות מספקת. אין להסיק מכך מה הייתה התוצאה; יש לעיין במסמך המקור.</p></div>`}
     ${excerpt ? `<div class="dialog-section"><h3>התאמה בטקסט${matchedPage ? ` — עמוד ${matchedPage}` : ""}</h3><div class="page-hit">${escapeHtml(excerpt)}</div></div>` : ""}
     <div class="dialog-section"><h3>אזהרת שימוש</h3><p>${record.sourceStatus === "רשמי" ? "יש לבדוק ערעור ומעמד עדכני לפני הסתמכות." : "זה אינו מסמך מקור רשמי מלא; אין לייחס להחלטה פרטים מעבר למקור המקושר."}</p></div>
-    <div class="dialog-actions"><button class="primary-button" data-dialog-action="attach" data-id="${escapeHtml(record.id)}" data-page="${matchedPage}">הוספה לטענה</button><button data-dialog-action="copy" data-id="${escapeHtml(record.id)}">העתקת אסמכתה</button>${record.pdf ? `<a class="primary-button" href="${escapeHtml(record.pdf)}" target="_blank" rel="noopener">פתיחת PDF</a>` : ""}${record.sourceUrl && record.sourceUrl !== record.pdf ? `<a href="${escapeHtml(record.sourceUrl)}" target="_blank" rel="noopener">מקור ציבורי</a>` : ""}</div>`;
+    <div class="dialog-actions"><button class="primary-button" data-dialog-action="attach" data-id="${escapeHtml(record.id)}" data-page="${matchedPage || operativePage}">הוספה לטענה</button><button data-dialog-action="copy" data-id="${escapeHtml(record.id)}">העתקת אסמכתה</button>${record.pdf ? `<a class="primary-button" href="${escapeHtml(record.pdf)}" target="_blank" rel="noopener">פתיחת PDF</a>` : ""}${record.sourceUrl && record.sourceUrl !== record.pdf ? `<a href="${escapeHtml(record.sourceUrl)}" target="_blank" rel="noopener">מקור ציבורי</a>` : ""}</div>`;
   el["case-dialog"].showModal();
 }
 
@@ -313,7 +320,8 @@ function renderComparison() {
   const fields = [
     ["מקור ואימות", (r) => `${r.verification} · ${r.sourceStatus}`], ["לשכה ומפקח/ת", (r) => `${r.office} · ${r.adjudicator}`],
     ["עובדות ותקציר", (r) => r.summary], ["נושאים", (r) => (r.categories || []).join("; ")],
-    ["תוצאה אופרטיבית", (r) => r.outcome || "לא חולצה"], ["זיקה לאשדוד", (r) => r.ashdodRelation || "אין"],
+    ["תוצאה", (r) => r.outcome || "לא אותרה באמינות מספקת"], ["סעדים", (r) => r.relief || "לא חולצו"],
+    ["עמודי ההכרעה", (r) => (r.operativePages || []).join(", ") || "לא אותרו"], ["זיקה לאשדוד", (r) => r.ashdodRelation || "אין"],
     ["מצב בדיקה", (r) => r.reviewStatus],
   ];
   const cols = `180px repeat(${records.length}, minmax(230px, 1fr))`;

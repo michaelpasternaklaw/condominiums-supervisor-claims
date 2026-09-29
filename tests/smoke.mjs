@@ -29,6 +29,7 @@ const cachedIds = [...cacheBlock.matchAll(/"([a-z][a-z0-9-]+)"/g)].map((match) =
 for (const id of cachedIds) assert.match(html, new RegExp(`id=["']${id}["']`), `missing cached element ${id}`);
 assert.match(app, /record\.duplicateGroup \|\| record\.isTest/);
 assert.doesNotMatch(app, /fetch\(["']https?:\/\//);
+assert.doesNotMatch(app, /קטע אופרטיבי לאיתור/);
 
 const ashdod = catalog.records.filter((record) => record.ashdodRelation);
 assert.equal(ashdod.filter((record) => record.sourceStatus === "רשמי").length, 58);
@@ -39,6 +40,13 @@ assert.ok(ashdod.filter((record) => record.sourceStatus === "משוחזר ממק
 const known = catalog.records.find((record) => record.caseNumber === "12/45/2023");
 assert.ok(known?.hasFullText);
 assert.ok(known.ashdodRelation);
+
+const operative = catalog.records.find((record) => record.caseNumber === "7/254/2024");
+assert.equal(operative?.outcome, "התביעה התקבלה בעיקרה");
+assert.deepEqual(operative?.operativePages, [18, 19]);
+assert.match(operative?.relief || "", /הריסה/);
+assert.match(operative?.operativeExcerpt || "", /לאור כל האמור לעיל/);
+assert.doesNotMatch(operative?.operativeExcerpt || "", /^מדינת ישראל/);
 
 function normalize(value) {
   return String(value || "").normalize("NFKD").replace(/[\u0591-\u05C7]/g, "").replace(/[\u200e\u200f\u202a-\u202e]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLocaleLowerCase("he");

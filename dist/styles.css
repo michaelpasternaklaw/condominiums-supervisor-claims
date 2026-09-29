@@ -87,6 +87,7 @@ h1 { margin-bottom: .35rem; font-size: clamp(1.7rem, 3vw, 2.55rem); line-height:
 .tag { background: var(--teal-soft); color: #145861; }
 .result-card h3 { margin: .45rem 0 .25rem; font-size: 1rem; }
 .result-card p { margin-bottom: .45rem; color: #344f5f; }
+.decision-result { margin: .55rem 0; padding: .55rem .7rem; background: #edf7f1; border-right: 3px solid var(--success); color: #234c38; font-size: .84rem; }
 .meta-line { color: var(--muted); font-size: .8rem; }
 .why-row { margin: .55rem 0; padding: .55rem .7rem; background: #f7f9fa; border-right: 2px solid var(--gold); font-size: .82rem; color: var(--ink-2); }
 .card-actions { align-content: flex-start; justify-content: flex-end; max-width: 235px; }
@@ -155,6 +156,13 @@ dialog::backdrop { background: rgba(10, 29, 42, .65); }
 .dialog-section { margin-top: 1.1rem; }
 .dialog-section h3 { font-size: 1rem; margin-bottom: .4rem; }
 .page-hit { padding: .8rem; background: var(--gold-soft); border-right: 3px solid var(--gold); white-space: pre-wrap; max-height: 260px; overflow: auto; }
+.operative-section { padding: 1rem; border: 1px solid #bfd6c8; background: #f7fbf8; }
+.operative-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.operative-header h3 { margin: .1rem 0 .8rem; font-size: 1.15rem; }
+.operative-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin-bottom: .8rem; }
+.operative-text { margin: 0; max-height: 360px; background: white; border-right-color: var(--success); font-style: normal; }
+.operative-warning, .operative-missing p { margin: .7rem 0 0; color: var(--muted); font-size: .8rem; }
+.operative-missing { padding: .85rem 1rem; border-right: 3px solid #9aaab3; background: #f1f4f5; }
 .secure-form label, #attach-form label { display: block; margin-top: .7rem; font-weight: 700; font-size: .85rem; }
 .form-error { min-height: 1.2rem; color: var(--danger); margin-top: .5rem; }
 .toast { position: fixed; left: 1rem; bottom: 1rem; z-index: 80; max-width: 420px; padding: .8rem 1rem; background: var(--ink); color: white; box-shadow: var(--shadow); }
@@ -181,7 +189,8 @@ dialog::backdrop { background: rgba(10, 29, 42, .65); }
   .results-toolbar { align-items: flex-start; }
   .sort-control { display: block; }
   .sort-control select { min-width: 0; max-width: 160px; }
-  .method-grid, .claim-body, .readiness-strip, .detail-grid { grid-template-columns: 1fr; }
+  .method-grid, .claim-body, .readiness-strip, .detail-grid, .operative-summary { grid-template-columns: 1fr; }
+  .operative-header { display: block; }
   .field-wide { grid-column: auto; }
   .page-view { padding: 1.4rem 1rem 3rem; }
   footer { display: block; }
