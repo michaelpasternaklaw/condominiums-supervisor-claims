@@ -16,11 +16,13 @@ const app = fs.readFileSync(path.join(dist, "app.js"), "utf8");
 assert.equal(catalog.totalDocuments, 1799);
 assert.equal(catalog.officialDocuments, 1765);
 assert.equal(catalog.externalDocuments, 34);
-assert.equal(catalog.fullTextDocuments, 513);
+assert.equal(catalog.fullTextDocuments, 1763);
+assert.equal(catalog.localPdfDocuments, 1763);
+assert.equal(catalog.ocrDocuments, 20);
 assert.equal(catalog.ashdodOfficial, 58);
-assert.equal(manifest.documents, 513);
+assert.equal(manifest.documents, 1763);
 assert.equal(manifest.tokenBucketCount, 64);
-assert.equal(manifest.pageShardCount, 24);
+assert.equal(manifest.pageShardCount, 64);
 
 const requiredIds = ["query", "municipality-filter", "adjudicator-filter", "status-filter", "view-compare", "view-workspace", "view-methodology", "secure-dialog", "attach-dialog"];
 for (const id of requiredIds) assert.match(html, new RegExp(`id=["']${id}["']`));
@@ -51,6 +53,8 @@ assert.deepEqual(operative?.operativePages, [18, 19]);
 assert.match(operative?.relief || "", /הריסה/);
 assert.match(operative?.operativeExcerpt || "", /לאור כל האמור לעיל/);
 assert.doesNotMatch(operative?.operativeExcerpt || "", /^מדינת ישראל/);
+assert.ok(catalog.records.some((record) => (record.defenseTopics || []).length > 0));
+assert.ok(catalog.records.some((record) => record.textMethod === "OCR"));
 
 function normalize(value) {
   return String(value || "").normalize("NFKD").replace(/[\u0591-\u05C7]/g, "").replace(/[\u200e\u200f\u202a-\u202e]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLocaleLowerCase("he");
