@@ -3,6 +3,7 @@ const state = {
   catalog: null, records: [], recordsById: new Map(), visible: [], page: 1, pageSize: 16,
   lens: "", fullTextMatches: new Map(), searchRequestId: 0, compare: new Set(),
   workspace: null, workspacePassphrase: null, secureMode: "", attachRecordId: "",
+  manifestPromise: null, pageShardCache: new Map(), evidenceShardCache: new Map(),
 };
 const el = {};
 const worker = new Worker("search-worker.js");
@@ -47,7 +48,7 @@ function cacheElements() {
   [
     "corpus-status", "query", "clear-query", "search-progress", "office-filter",
     "municipality-filter", "adjudicator-filter", "year-filter", "category-filter",
-    "type-filter", "status-filter", "full-text-filter", "ashdod-filter", "show-duplicates",
+    "type-filter", "status-filter", "confidence-filter", "availability-filter", "full-text-filter", "ashdod-filter", "show-duplicates",
     "sort-select", "result-count", "result-list", "pagination", "loading-state", "empty-state",
     "error-state", "reset-filters", "mobile-filter-button", "filters", "updated-at",
     "compare-count", "comparison-empty", "comparison-table", "clear-comparison", "case-dialog",
@@ -115,7 +116,8 @@ function updateUrl() {
     ["q", el.query.value.trim()], ["office", el["office-filter"].value],
     ["city", el["municipality-filter"].value], ["judge", el["adjudicator-filter"].value],
     ["year", el["year-filter"].value], ["topic", el["category-filter"].value],
-    ["type", el["type-filter"].value], ["status", el["status-filter"].value], ["lens", state.lens],
+    ["type", el["type-filter"].value], ["status", el["status-filter"].value],
+    ["confidence", el["confidence-filter"].value], ["availability", el["availability-filter"].value], ["lens", state.lens],
   ];
   mappings.forEach(([key, value]) => { if (value) params.set(key, value); });
   if (el["full-text-filter"].checked) params.set("fullText", "1");
@@ -161,7 +163,8 @@ function applyFilters(writeUrl = true) {
     office: el["office-filter"].value, municipality: el["municipality-filter"].value,
     adjudicator: el["adjudicator-filter"].value, year: el["year-filter"].value,
     category: el["category-filter"].value, type: el["type-filter"].value,
-    status: el["status-filter"].value,
+    status: el["status-filter"].value, confidence: el["confidence-filter"].value,
+    availability: el["availability-filter"].value,
   };
   state.visible = state.records.filter((record) => {
     if (!el["show-duplicates"].checked && (record.duplicateGroup || record.isTest)) return false;
@@ -172,6 +175,8 @@ function applyFilters(writeUrl = true) {
     if (filters.category && !(record.categories || []).includes(filters.category)) return false;
     if (filters.type && record.type !== filters.type) return false;
     if (filters.status && record.sourceStatus !== filters.status) return false;
+    if (filters.confidence && record.classificationConfidence !== filters.confidence) return false;
+    if (filters.availability && record.documentAvailability !== filters.availability) return false;
     if (el["full-text-filter"].checked && !record.hasFullText) return false;
     if (el["ashdod-filter"].checked && !record.ashdodRelation) return false;
     if (!lensMatches(record)) return false;
@@ -206,7 +211,7 @@ function resultCard(record) {
   return `<article class="result-card" data-id="${escapeHtml(record.id)}">
     <div class="result-main">
       <div class="case-line"><span class="case-number">${escapeHtml(record.caseNumber)}</span>${badge(formatDate(record.date))}${badge(record.type)}</div>
-      <div class="badge-line"><span class="rank-pill rank-${record.verificationRank}">${escapeHtml(record.verification)}</span>${badge(record.sourceStatus)}${record.ashdodRelation ? badge("אשדוד") : ""}${record.hasFullText ? badge("טקסט מלא") : ""}</div>
+      <div class="badge-line"><span class="rank-pill rank-${record.verificationRank}">${escapeHtml(record.verification)}</span>${badge(record.sourceStatus)}${record.classificationConfidence ? badge(`סיווג: ${record.classificationConfidence}`) : ""}${record.sectionRole ? badge(record.sectionRole) : ""}${record.ashdodRelation ? badge("אשדוד") : ""}${record.hasFullText ? badge("טקסט מלא") : ""}</div>
       <h3>${escapeHtml(record.office || "לשכה לא ידועה")}${record.adjudicator ? ` · ${escapeHtml(record.adjudicator)}` : ""}</h3>
       <p>${escapeHtml(summary)}</p>
       ${record.outcome ? `<div class="decision-result"><strong>תוצאה:</strong> ${escapeHtml(record.outcome)}${record.relief ? ` · <strong>סעדים:</strong> ${escapeHtml(record.relief)}` : ""}</div>` : ""}
@@ -263,31 +268,63 @@ function detailItem(label, value) {
   return value ? `<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>` : "";
 }
 
-async function pageExcerpt(record, page) {
-  if (!record.text || !page) return "";
+async function getSearchManifest() {
+  if (!state.manifestPromise) state.manifestPromise = fetch("data/search-manifest.json").then((response) => {
+    if (!response.ok) throw new Error("manifest");
+    return response.json();
+  });
+  return state.manifestPromise;
+}
+
+async function loadShard(cache, file) {
+  if (!cache.has(file)) cache.set(file, fetch(file).then((response) => {
+    if (!response.ok) throw new Error("shard");
+    return response.json();
+  }));
+  return cache.get(file);
+}
+
+async function documentEvidence(record) {
   try {
-    const text = await fetch(record.text).then((response) => response.text());
-    const markerPattern = new RegExp(`=== PDF PAGE ${page} ===([\\s\\S]*?)(?==== PDF PAGE|$)`);
-    const markerMatch = text.match(markerPattern)?.[1];
-    if (markerMatch) return markerMatch.trim().slice(0, 2800);
-    return (text.split("\f")[Number(page) - 1] || "").trim().slice(0, 2800);
+    const manifest = await getSearchManifest();
+    const shard = manifest.documentEvidenceShards?.[record.id];
+    if (shard === undefined) return {};
+    return (await loadShard(state.evidenceShardCache, manifest.evidenceFiles[shard]))[record.id] || {};
+  } catch { return {}; }
+}
+
+async function pageExcerpt(record, page) {
+  if (!record.hasFullText || !page) return "";
+  try {
+    const manifest = await getSearchManifest();
+    const shard = manifest.documentShards?.[record.id];
+    if (shard === undefined) return "";
+    const pages = (await loadShard(state.pageShardCache, manifest.pageFiles[shard]))[record.id] || [];
+    return String(pages.find(([number]) => Number(number) === Number(page))?.[1] || "").trim().slice(0, 2800);
   } catch { return ""; }
 }
 
 async function openDetails(record) {
   const match = state.fullTextMatches.get(record.id);
-  const matchedPage = match?.pages?.[0] || "";
+  const evidence = await documentEvidence(record);
+  const matchedPage = match?.pages?.[0] || record.evidencePages?.[0] || "";
   const operativePage = record.operativePages?.[0] || "";
-  const excerpt = match?.snippet || await pageExcerpt(record, matchedPage);
+  const excerpt = match?.snippet || evidence.evidenceSnippets?.[0] || await pageExcerpt(record, matchedPage);
+  const classificationDetails = (evidence.classifications || []).slice(0, 8).map((item) =>
+    `<li><strong>${escapeHtml(item.topic)}</strong> — ${escapeHtml(item.sectionRole || "מקטע לא סווג")} · ביטחון ${escapeHtml(item.confidence)}${item.pages?.length ? ` · עמ׳ ${escapeHtml(item.pages.join(", "))}` : ""}</li>`).join("");
+  const citationLinks = (evidence.citationLinks || []).slice(0, 12).map((item) =>
+    `<li>תיק ${escapeHtml(item.cited_case_number)} · אזכור בעמ׳ ${escapeHtml(item.page_number)}</li>`).join("");
   el["dialog-content"].innerHTML = `
     <div class="dialog-kicker">${escapeHtml(record.type)} · ${escapeHtml(record.verification)}</div>
     <h2 class="dialog-title" id="dialog-title">${escapeHtml(record.caseNumber)}</h2>
     <p>${escapeHtml(citation(record))}</p>
     <div class="dialog-summary">${escapeHtml(record.summary || "אין תקציר זמין")}</div>
-    <div class="detail-grid">${detailItem("לשכה", record.office)}${detailItem("מפקח/ת", record.adjudicator)}${detailItem("תובעים", record.plaintiffs)}${detailItem("נתבעים", record.defendants)}${detailItem("יישוב", record.municipality)}${detailItem("כתובת", record.address)}${detailItem("מעמד מקור", record.sourceStatus)}${detailItem("אימות", record.reviewStatus)}${detailItem("זיקה לאשדוד", record.ashdodRelation)}</div>
+    <div class="detail-grid">${detailItem("לשכה", record.office)}${detailItem("מפקח/ת", record.adjudicator)}${detailItem("תובעים", record.plaintiffs)}${detailItem("נתבעים", record.defendants)}${detailItem("יישוב", record.municipality)}${detailItem("כתובת", record.address)}${detailItem("מעמד מקור", record.sourceStatus)}${detailItem("אימות", record.reviewStatus)}${detailItem("זיקה לאשדוד", record.ashdodRelation)}${detailItem("זמינות", record.documentAvailability)}${detailItem("ביטחון בסיווג", record.classificationConfidence)}${detailItem("מעמד הקטע", record.sectionRole)}</div>
     <div class="dialog-section"><h3>נושאים</h3><div class="tags">${(record.categories || []).map((tag) => badge(tag, "tag")).join("")}</div></div>
     ${(record.defenseTopics || []).length ? `<div class="dialog-section"><h3>טענות הגנה שאותרו</h3><div class="tags">${record.defenseTopics.map((tag) => badge(tag, "tag")).join("")}</div>${record.defensePages ? `<p class="operative-warning">עמודי איתור: ${escapeHtml(record.defensePages)}</p>` : ""}</div>` : ""}
     ${(record.legalPrinciples || []).length ? `<div class="dialog-section"><h3>עקרונות משפטיים שאותרו</h3><div class="tags">${record.legalPrinciples.map((tag) => badge(tag, "tag")).join("")}</div></div>` : ""}
+    ${classificationDetails ? `<div class="dialog-section"><h3>בסיס הסיווג המקומי</h3><ul class="classification-list">${classificationDetails}</ul><p class="operative-warning">גרסת כללים: ${escapeHtml(record.ruleVersion || "לא צוינה")}. “טענת תובע/נתבע” אינה מוצגת כקביעה של המפקח.</p></div>` : ""}
+    ${citationLinks ? `<div class="dialog-section"><h3>הפניות לתיקים שאותרו בטקסט</h3><ul class="classification-list">${citationLinks}</ul></div>` : ""}
     ${record.operativeExcerpt ? `<div class="dialog-section operative-section">
       <div class="operative-header"><div><span class="eyebrow">מה נפסק בפועל</span><h3>הכרעה וסעדים</h3></div><span class="pill">חילוץ אוטומטי · ודאות ${escapeHtml(record.operativeConfidence || "לא סווגה")}</span></div>
       <div class="operative-summary">${detailItem("תוצאה", record.outcome)}${detailItem("סעדים שאותרו", record.relief)}${detailItem("עמודי מקור", (record.operativePages || []).join(", "))}</div>
@@ -518,12 +555,12 @@ function bindEvents() {
     document.querySelectorAll("[data-lens]").forEach((item) => item.classList.toggle("active", item === button));
     state.page = 1; applyFilters();
   }));
-  ["office-filter", "municipality-filter", "adjudicator-filter", "year-filter", "category-filter", "type-filter", "status-filter", "full-text-filter", "ashdod-filter", "show-duplicates", "sort-select"].forEach((id) => {
+  ["office-filter", "municipality-filter", "adjudicator-filter", "year-filter", "category-filter", "type-filter", "status-filter", "confidence-filter", "availability-filter", "full-text-filter", "ashdod-filter", "show-duplicates", "sort-select"].forEach((id) => {
     el[id].addEventListener("change", () => { state.page = 1; applyFilters(); });
   });
   el["reset-filters"].addEventListener("click", () => {
     el.query.value = "";
-    ["office-filter", "municipality-filter", "adjudicator-filter", "year-filter", "category-filter", "type-filter", "status-filter"].forEach((id) => { el[id].value = ""; });
+    ["office-filter", "municipality-filter", "adjudicator-filter", "year-filter", "category-filter", "type-filter", "status-filter", "confidence-filter", "availability-filter"].forEach((id) => { el[id].value = ""; });
     ["full-text-filter", "ashdod-filter", "show-duplicates"].forEach((id) => { el[id].checked = false; });
     state.lens = ""; state.fullTextMatches.clear(); state.page = 1;
     document.querySelectorAll("[data-lens]").forEach((button) => button.classList.toggle("active", button.dataset.lens === ""));
@@ -639,7 +676,7 @@ function bindEvents() {
 
 function restoreSearchFromUrl() {
   const params = new URLSearchParams(location.search);
-  const mappings = { q: "query", office: "office-filter", city: "municipality-filter", judge: "adjudicator-filter", year: "year-filter", topic: "category-filter", type: "type-filter", status: "status-filter" };
+  const mappings = { q: "query", office: "office-filter", city: "municipality-filter", judge: "adjudicator-filter", year: "year-filter", topic: "category-filter", type: "type-filter", status: "status-filter", confidence: "confidence-filter", availability: "availability-filter" };
   Object.entries(mappings).forEach(([key, id]) => { if (params.get(key)) el[id].value = params.get(key); });
   state.lens = params.get("lens") || "";
   el["full-text-filter"].checked = params.get("fullText") === "1";
@@ -663,6 +700,8 @@ async function init() {
     addOptions(el["category-filter"], state.catalog.categories);
     addOptions(el["type-filter"], state.catalog.decisionTypes);
     addOptions(el["status-filter"], state.catalog.sourceStatuses);
+    addOptions(el["confidence-filter"], state.catalog.classificationConfidences || []);
+    addOptions(el["availability-filter"], state.catalog.documentAvailabilities || []);
     el["corpus-status"].textContent = `${state.catalog.totalDocuments.toLocaleString("he-IL")} רשומות · ${state.catalog.fullTextDocuments.toLocaleString("he-IL")} עם טקסט מלא · ${state.catalog.localPdfDocuments.toLocaleString("he-IL")} קובצי PDF`;
     el["updated-at"].textContent = `עודכן ${formatDate(state.catalog.generatedAt.slice(0, 10))}`;
     el["corpus-facts"].innerHTML = `<span><strong>${state.catalog.totalDocuments.toLocaleString("he-IL")}</strong> רשומות</span><span><strong>${state.catalog.officialDocuments.toLocaleString("he-IL")}</strong> רשמיות</span><span><strong>${state.catalog.externalDocuments.toLocaleString("he-IL")}</strong> השלמות</span><span><strong>${state.catalog.localPdfDocuments.toLocaleString("he-IL")}</strong> קובצי PDF</span><span><strong>${state.catalog.fullTextDocuments.toLocaleString("he-IL")}</strong> טקסטים מלאים</span><span><strong>${state.catalog.ocrDocuments.toLocaleString("he-IL")}</strong> טקסטים שהומרו ב־OCR</span><span><strong>${state.catalog.ashdodOfficial}</strong> רשומות אשדוד רשמיות</span>`;

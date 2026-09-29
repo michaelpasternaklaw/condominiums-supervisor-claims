@@ -23,8 +23,12 @@ assert.equal(catalog.ashdodOfficial, 58);
 assert.equal(manifest.documents, 1763);
 assert.equal(manifest.tokenBucketCount, 64);
 assert.equal(manifest.pageShardCount, 64);
+assert.equal(manifest.evidenceShardCount, 64);
+assert.ok(manifest.version);
+assert.equal(manifest.ruleVersion, "2026.09.29.1");
+assert.ok(!fs.existsSync(path.join(dist, "texts")), "full text must not be duplicated as standalone files");
 
-const requiredIds = ["query", "municipality-filter", "adjudicator-filter", "status-filter", "view-compare", "view-workspace", "view-methodology", "secure-dialog", "attach-dialog"];
+const requiredIds = ["query", "municipality-filter", "adjudicator-filter", "status-filter", "confidence-filter", "availability-filter", "view-compare", "view-workspace", "view-methodology", "secure-dialog", "attach-dialog"];
 for (const id of requiredIds) assert.match(html, new RegExp(`id=["']${id}["']`));
 const cacheBlock = app.match(/function cacheElements\(\) \{([\s\S]*?)\.forEach/)?.[1] || "";
 const cachedIds = [...cacheBlock.matchAll(/"([a-z][a-z0-9-]+)"/g)].map((match) => match[1]);
@@ -46,6 +50,19 @@ assert.ok(ashdod.filter((record) => record.sourceStatus === "משוחזר ממק
 const known = catalog.records.find((record) => record.caseNumber === "12/45/2023");
 assert.ok(known?.hasFullText);
 assert.ok(known.ashdodRelation);
+assert.ok(known.classificationConfidence);
+assert.ok(known.sectionRole);
+assert.ok(known.ruleVersion);
+assert.ok(Array.isArray(known.evidencePages));
+assert.ok(known.documentAvailability);
+assert.ok(known.documentUrl);
+assert.equal(known.localAssetUrl, known.pdf);
+
+const evidenceShard = manifest.documentEvidenceShards[known.id];
+const evidence = JSON.parse(fs.readFileSync(path.join(dist, manifest.evidenceFiles[evidenceShard]), "utf8"))[known.id];
+assert.ok(evidence.classifications.length > 0);
+assert.ok(evidence.evidenceSnippets.length > 0);
+assert.ok(evidence.classifications.every((item) => item.topic && item.confidence && item.sectionRole && Array.isArray(item.pages)));
 
 const operative = catalog.records.find((record) => record.caseNumber === "7/254/2024");
 assert.equal(operative?.outcome, "התביעה התקבלה בעיקרה");
@@ -83,6 +100,22 @@ const workerResult = workerMessages.find((message) => message.type === "results"
 assert.ok(workerResult?.matches?.length > 0);
 assert.ok(workerResult.matches.some((match) => match.pages.length > 0));
 
+for (const relativePath of [...manifest.tokenFiles, ...manifest.pageFiles, ...manifest.evidenceFiles]) {
+  assert.ok(!relativePath.startsWith("/"), `asset path must support a GitHub Pages subpath: ${relativePath}`);
+  assert.ok(fs.existsSync(path.join(dist, relativePath)), `missing static asset ${relativePath}`);
+}
+for (const record of catalog.records.filter((item) => item.localAssetUrl)) {
+  assert.ok(!record.localAssetUrl.startsWith("/"));
+  assert.ok(fs.existsSync(path.join(dist, record.localAssetUrl)), `missing document ${record.localAssetUrl}`);
+}
+
+const files = fs.readdirSync(dist, { recursive: true, withFileTypes: true })
+  .filter((entry) => entry.isFile()).map((entry) => path.join(entry.parentPath || entry.path, entry.name));
+const stats = files.map((file) => fs.statSync(file));
+assert.ok(stats.reduce((sum, item) => sum + item.size, 0) <= 850 * 1024 * 1024);
+assert.ok(Math.max(...stats.map((item) => item.size)) <= 90 * 1024 * 1024);
+assert.ok(stats.every((item) => item.nlink === 1), "Pages artifact must not contain hard links");
+
 const seedPath = path.join(project, "case_management/private_workspace_seed.json");
 const seed = fs.existsSync(seedPath) ? JSON.parse(fs.readFileSync(seedPath, "utf8")) : { version: 1, title: "בדיקה", claims: [] };
 if (fs.existsSync(seedPath)) {
@@ -108,6 +141,8 @@ console.log(JSON.stringify({
   searchTerm: term,
   searchPostings: tokenData[term].length,
   phraseSearchMatches: workerResult.matches.length,
+  evidenceTopics: evidence.classifications.length,
+  staticSiteMiB: Math.round(stats.reduce((sum, item) => sum + item.size, 0) / 1024 / 1024),
   privateSeedClaims: fs.existsSync(seedPath) ? seed.claims.length : "local-only",
   encryptionRoundTrip: true,
 }, null, 2));

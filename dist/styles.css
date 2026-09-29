@@ -194,6 +194,8 @@ dialog::backdrop { background: rgba(10, 29, 42, .65); }
 .dialog-section { margin-top: 1.1rem; }
 .dialog-section h3 { font-size: 1rem; margin-bottom: .4rem; }
 .page-hit { padding: .8rem; background: var(--gold-soft); border-right: 3px solid var(--gold); white-space: pre-wrap; max-height: 260px; overflow: auto; }
+.classification-list { margin: .35rem 0 0; padding-right: 1.2rem; color: #314d5e; }
+.classification-list li { margin: .35rem 0; }
 .operative-section { padding: 1rem; border: 1px solid #bfd6c8; background: #f7fbf8; }
 .operative-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
 .operative-header h3 { margin: .1rem 0 .8rem; font-size: 1.15rem; }

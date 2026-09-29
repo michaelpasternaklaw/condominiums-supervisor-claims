@@ -1,5 +1,4 @@
 # Local-only build tooling and reports. The public repository contains only the
 # generated site, its deployment workflow, and public documentation.
-build_site.py
 build-report.json
 __pycache__/
