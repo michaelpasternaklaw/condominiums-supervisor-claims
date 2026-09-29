@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import re
 import shutil
 import unicodedata
+import zipfile
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -22,6 +24,7 @@ MASTER = PROJECT_ROOT / "outputs/legal_decisions_database/master_index.csv"
 DUPLICATES = PROJECT_ROOT / "outputs/legal_decisions_database/duplicates.csv"
 ASHDOD = PROJECT_ROOT / "outputs/legal_decisions_database/ashdod/ashdod_index.csv"
 FULL_EXPORT = PROJECT_ROOT / "outputs/legal_decisions_database/full_export/complete_export.csv"
+DOCX_EXPORT = PROJECT_ROOT / "outputs/legal_decisions_database/full_export/docx_export.csv"
 FULL_CLASSIFICATION = PROJECT_ROOT / "outputs/legal_decisions_database/full_text_classification.csv"
 PIPELINE_EXPORT = REPOSITORY / "pipeline-public.json"
 TOKEN_BUCKETS = 64
@@ -29,7 +32,7 @@ PAGE_SHARDS = 64
 EVIDENCE_SHARDS = 64
 MAX_SITE_BYTES = 850 * 1024 * 1024
 MAX_FILE_BYTES = 90 * 1024 * 1024
-RESERVED_NON_PDF_BYTES = 180 * 1024 * 1024
+RESERVED_NON_PDF_BYTES = 260 * 1024 * 1024
 
 ALLOWED_PDF_ROOTS = (
     PROJECT_ROOT / "legal_library/case_law/tabu_relevant/files",
@@ -40,6 +43,9 @@ ALLOWED_PDF_ROOTS = (
 ALLOWED_TEXT_ROOTS = (
     REPOSITORY / "texts",
     PROJECT_ROOT / "outputs/legal_decisions_database/full_export/text",
+)
+ALLOWED_DOCX_ROOTS = (
+    PROJECT_ROOT / "outputs/legal_decisions_database/full_export/docx",
 )
 BLOCKED_PUBLICATION_TERMS = (
     "סמטת יהואש 2",
@@ -97,6 +103,32 @@ def is_within(path: Path, roots: tuple[Path, ...]) -> bool:
 def copy_public_file(source: Path, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, destination)
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def validate_public_docx(path: Path, expected_sha256: str = "") -> None:
+    if not is_within(path, ALLOWED_DOCX_ROOTS):
+        raise RuntimeError(f"Public build blocked: DOCX outside approved roots: {path}")
+    if not path.is_file() or not zipfile.is_zipfile(path):
+        raise RuntimeError(f"Public build blocked: invalid DOCX container: {path}")
+    with zipfile.ZipFile(path) as archive:
+        names = set(archive.namelist())
+        if "[Content_Types].xml" not in names or "word/document.xml" not in names:
+            raise RuntimeError(f"Public build blocked: incomplete DOCX package: {path}")
+        document_xml = archive.read("word/document.xml").decode("utf-8", errors="ignore")
+        normalized_xml = normalize_text(document_xml)
+        for term in BLOCKED_PUBLICATION_TERMS:
+            if normalize_text(term) in normalized_xml:
+                raise RuntimeError(f"Public build blocked: private term in DOCX: {term}")
+    if expected_sha256 and file_sha256(path) != expected_sha256:
+        raise RuntimeError(f"Public build blocked: DOCX hash mismatch: {path}")
 
 
 def clean_stale(directory: Path, expected: set[str], pattern: str = "*") -> None:
@@ -333,6 +365,7 @@ def main() -> None:
     duplicate_rows = read_csv(DUPLICATES)
     ashdod_rows = read_csv(ASHDOD)
     export_rows = read_csv(FULL_EXPORT)
+    docx_rows = read_csv(DOCX_EXPORT)
     classification_rows = read_csv(FULL_CLASSIFICATION)
     curated_records = load_curated()
     pipeline = json.loads(PIPELINE_EXPORT.read_text(encoding="utf-8")) if PIPELINE_EXPORT.exists() else {"version": "", "records": {}}
@@ -340,12 +373,18 @@ def main() -> None:
 
     if len(master_rows) != 1799:
         raise RuntimeError(f"Expected 1,799 master rows, found {len(master_rows)}")
+    if len(docx_rows) != 1799:
+        raise RuntimeError(f"Expected 1,799 DOCX manifest rows, found {len(docx_rows)}")
+    available_docx_count = sum(row.get("סטטוס יצירה") == "available" for row in docx_rows)
+    if available_docx_count != 1763:
+        raise RuntimeError(f"Expected 1,763 available DOCX files, found {available_docx_count}")
     official_count = sum(row.get("סטטוס") == "רשמי" for row in master_rows)
     if official_count != 1765:
         raise RuntimeError(f"Expected 1,765 official rows, found {official_count}")
 
     duplicate_by_id = {row["מזהה רשומה"]: row.get("קבוצת כפילות", "") for row in duplicate_rows}
     export_by_id = {row["מזהה רשומה"]: row for row in export_rows}
+    docx_by_id = {row["מזהה רשומה"]: row for row in docx_rows}
     classification_by_id = {row["מזהה רשומה"]: row for row in classification_rows}
     ashdod_by_case: dict[str, list[dict]] = defaultdict(list)
     for row in ashdod_rows:
@@ -355,17 +394,20 @@ def main() -> None:
     used_curated: set[str] = set()
     catalog: list[dict] = []
     expected_pdfs: set[str] = set()
+    expected_docx: set[str] = set()
     token_index: list[dict[str, dict[str, set[int]]]] = [defaultdict(lambda: defaultdict(set)) for _ in range(TOKEN_BUCKETS)]
     page_shards: list[dict[str, list[list]]] = [dict() for _ in range(PAGE_SHARDS)]
     evidence_shards: list[dict[str, dict]] = [dict() for _ in range(EVIDENCE_SHARDS)]
     doc_shards: dict[str, int] = {}
     evidence_doc_shards: dict[str, int] = {}
     copied_pdf_bytes = 0
+    copied_docx_bytes = 0
 
     pdf_dir = DIST / "pdfs"
+    docx_dir = DIST / "docx"
     search_dir = DIST / "data/search"
     data_dir = DIST / "data"
-    for directory in (pdf_dir, search_dir, data_dir):
+    for directory in (pdf_dir, docx_dir, search_dir, data_dir):
         directory.mkdir(parents=True, exist_ok=True)
 
     for row in master_rows:
@@ -378,6 +420,7 @@ def main() -> None:
         )), None)
         status = (ashdod or {}).get("סטטוס") or row.get("סטטוס", "")
         exported = export_by_id.get(row["מזהה רשומה"], {})
+        docx_exported = docx_by_id.get(row["מזהה רשומה"], {})
         classified = classification_by_id.get(row["מזהה רשומה"], {})
         pipeline_record = pipeline_by_id.get(row["מזהה רשומה"], {})
         exported_pdf = Path(exported["PDF מקומי מלא"]) if exported.get("PDF מקומי מלא") else None
@@ -390,6 +433,7 @@ def main() -> None:
         ])
 
         local_pdf = ""
+        local_docx = ""
         operative = ""
         operative_pages: list[int] = []
         operative_confidence = ""
@@ -437,6 +481,18 @@ def main() -> None:
                     for token in tokens:
                         token_index[stable_bucket(token, TOKEN_BUCKETS)][token][row["מזהה רשומה"]].add(number)
 
+        if docx_exported.get("סטטוס יצירה") == "available" and docx_exported.get("נתיב DOCX"):
+            source_docx = Path(docx_exported["נתיב DOCX"])
+            validate_public_docx(source_docx, docx_exported.get("SHA256", ""))
+            docx_name = f"{row['מזהה רשומה']}.docx"
+            docx_size = source_docx.stat().st_size
+            if docx_size > MAX_FILE_BYTES:
+                raise RuntimeError(f"DOCX exceeds the public per-file limit: {source_docx}")
+            copy_public_file(source_docx, docx_dir / docx_name)
+            expected_docx.add(docx_name)
+            local_docx = f"docx/{docx_name}"
+            copied_docx_bytes += docx_size
+
         categories = split_terms(classified.get("תגיות נושא מלאות") or row.get("תגיות נושא", ""))
         keywords = split_terms(row.get("מילות מפתח משפטיות", ""))
         defense_topics = split_terms(classified.get("טענות הגנה שאותרו", ""))
@@ -459,7 +515,9 @@ def main() -> None:
             "summary": clean(row.get("תקציר")), "operativeExcerpt": operative,
             "operativePages": operative_pages, "operativeConfidence": operative_confidence,
             "sourceName": clean(row.get("מקור")), "sourceStatus": clean(status), "sourceUrl": source_url,
-            "pdf": pdf_url, "text": "", "hasFullText": bool(source_text), "hasLocalPdf": bool(local_pdf),
+            "pdf": pdf_url, "docx": local_docx, "text": "", "hasFullText": bool(source_text),
+            "hasLocalPdf": bool(local_pdf), "hasDocx": bool(local_docx),
+            "docxOrigin": clean(docx_exported.get("סוג DOCX", "")),
             "pages": pages, "verification": verification, "verificationRank": rank,
             "reviewStatus": review_status, "classificationBasis": clean(row.get("בסיס הסיווג")),
             "ashdodRelation": clean(ashdod_relation),
@@ -487,6 +545,7 @@ def main() -> None:
         catalog.append(record)
 
     clean_stale(pdf_dir, expected_pdfs, "*.pdf")
+    clean_stale(docx_dir, expected_docx, "*.docx")
     catalog.sort(key=lambda item: (item["date"], item["caseNumber"]), reverse=True)
 
     payload = {
@@ -494,6 +553,7 @@ def main() -> None:
         "officialDocuments": official_count, "externalDocuments": len(catalog) - official_count,
         "fullTextDocuments": sum(item["hasFullText"] for item in catalog),
         "localPdfDocuments": sum(item["hasLocalPdf"] for item in catalog),
+        "docxDocuments": sum(item["hasDocx"] for item in catalog),
         "ocrDocuments": sum(item["textMethod"] == "OCR" for item in catalog),
         "ashdodOfficial": sum(bool(item["sourceStatus"] == "רשמי" and item["ashdodRelation"]) for item in catalog),
         "offices": sorted({item["office"] for item in catalog if item["office"]}),
@@ -569,7 +629,8 @@ def main() -> None:
 
     report = {
         "documents": len(catalog), "official": official_count, "external": len(catalog) - official_count,
-        "fullText": len(doc_shards), "pdfs": len(expected_pdfs), "tokenBuckets": TOKEN_BUCKETS,
+        "fullText": len(doc_shards), "pdfs": len(expected_pdfs), "docx": len(expected_docx),
+        "pdfBytes": copied_pdf_bytes, "docxBytes": copied_docx_bytes, "tokenBuckets": TOKEN_BUCKETS,
         "pageShards": PAGE_SHARDS, "evidenceShards": EVIDENCE_SHARDS,
         "distBytes": dist_bytes, "maxFileBytes": max(path.stat().st_size for path in files),
         "limits": {"siteBytes": MAX_SITE_BYTES, "fileBytes": MAX_FILE_BYTES},

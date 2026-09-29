@@ -18,6 +18,7 @@ assert.equal(catalog.officialDocuments, 1765);
 assert.equal(catalog.externalDocuments, 34);
 assert.equal(catalog.fullTextDocuments, 1763);
 assert.equal(catalog.localPdfDocuments, 1763);
+assert.equal(catalog.docxDocuments, 1763);
 assert.equal(catalog.ocrDocuments, 20);
 assert.equal(catalog.ashdodOfficial, 58);
 assert.equal(manifest.documents, 1763);
@@ -28,7 +29,7 @@ assert.ok(manifest.version);
 assert.equal(manifest.ruleVersion, "2026.09.29.1");
 assert.ok(!fs.existsSync(path.join(dist, "texts")), "full text must not be duplicated as standalone files");
 
-const requiredIds = ["query", "municipality-filter", "adjudicator-filter", "status-filter", "confidence-filter", "availability-filter", "view-compare", "view-workspace", "view-methodology", "secure-dialog", "attach-dialog"];
+const requiredIds = ["query", "municipality-filter", "adjudicator-filter", "status-filter", "confidence-filter", "availability-filter", "word-filter", "view-compare", "view-workspace", "view-methodology", "secure-dialog", "attach-dialog"];
 for (const id of requiredIds) assert.match(html, new RegExp(`id=["']${id}["']`));
 const cacheBlock = app.match(/function cacheElements\(\) \{([\s\S]*?)\.forEach/)?.[1] || "";
 const cachedIds = [...cacheBlock.matchAll(/"([a-z][a-z0-9-]+)"/g)].map((match) => match[1]);
@@ -57,6 +58,8 @@ assert.ok(Array.isArray(known.evidencePages));
 assert.ok(known.documentAvailability);
 assert.ok(known.documentUrl);
 assert.equal(known.localAssetUrl, known.pdf);
+assert.ok(known.hasDocx);
+assert.match(known.docx, /^docx\/.+\.docx$/);
 
 const evidenceShard = manifest.documentEvidenceShards[known.id];
 const evidence = JSON.parse(fs.readFileSync(path.join(dist, manifest.evidenceFiles[evidenceShard]), "utf8"))[known.id];
@@ -108,6 +111,13 @@ for (const record of catalog.records.filter((item) => item.localAssetUrl)) {
   assert.ok(!record.localAssetUrl.startsWith("/"));
   assert.ok(fs.existsSync(path.join(dist, record.localAssetUrl)), `missing document ${record.localAssetUrl}`);
 }
+for (const record of catalog.records.filter((item) => item.hasDocx)) {
+  assert.ok(!record.docx.startsWith("/"));
+  assert.ok(fs.existsSync(path.join(dist, record.docx)), `missing DOCX ${record.docx}`);
+  const signature = fs.readFileSync(path.join(dist, record.docx)).subarray(0, 2).toString("ascii");
+  assert.equal(signature, "PK", `invalid DOCX container ${record.docx}`);
+}
+assert.equal(fs.readdirSync(path.join(dist, "docx")).filter((name) => name.endsWith(".docx")).length, 1763);
 
 const files = fs.readdirSync(dist, { recursive: true, withFileTypes: true })
   .filter((entry) => entry.isFile()).map((entry) => path.join(entry.parentPath || entry.path, entry.name));
@@ -137,6 +147,7 @@ assert.deepEqual(JSON.parse(new TextDecoder().decode(decrypted)), seed);
 console.log(JSON.stringify({
   records: catalog.totalDocuments,
   fullText: catalog.fullTextDocuments,
+  docx: catalog.docxDocuments,
   ashdod: { official: 58, reconstructed: 4, leads: 1 },
   searchTerm: term,
   searchPostings: tokenData[term].length,
