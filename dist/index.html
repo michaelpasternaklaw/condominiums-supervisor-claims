@@ -3,120 +3,140 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="מאגר מקומי לחיפוש בפסקי דין בתחום בתים משותפים והמפקח על רישום מקרקעין">
-  <meta name="theme-color" content="#10233f">
-  <title>מאגר הפסיקה המשפחתי</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310233f'/%3E%3Cpath d='M16 18h32v5H16zm4 9h24v22H20z' fill='%23f6f1e8'/%3E%3Cpath d='M25 32h14M25 38h14M25 44h9' stroke='%23b58a48' stroke-width='3'/%3E%3C/svg%3E">
+  <meta name="description" content="מאגר פסיקה וכלי עבודה לבניית טיעון בתביעות בתים משותפים ומקרקעין">
+  <meta name="theme-color" content="#102b3f">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>מאגר הפסיקה — סביבת מחקר וטיעון</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23102b3f'/%3E%3Cpath d='M16 18h32v5H16zm4 9h24v22H20z' fill='%23f8fafc'/%3E%3Cpath d='M25 32h14M25 38h14M25 44h9' stroke='%23c9974b' stroke-width='3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#results">דלג לתוצאות</a>
+  <a class="skip-link" href="#main-content">דלג לתוכן</a>
   <header class="topbar">
-    <div class="brand" aria-label="מאגר הפסיקה המשפחתי">
+    <button class="brand" type="button" data-view-target="search" aria-label="חזרה לחיפוש">
       <span class="brand-mark" aria-hidden="true">פ</span>
-      <div>
-        <strong>מאגר הפסיקה</strong>
-        <span>בתים משותפים ומקרקעין</span>
-      </div>
-    </div>
+      <span><strong>מאגר הפסיקה</strong><small>מחקר · השוואה · בניית טיעון</small></span>
+    </button>
+    <nav class="main-nav" aria-label="ניווט ראשי">
+      <button class="nav-button active" type="button" data-view-target="search">חיפוש</button>
+      <button class="nav-button" type="button" data-view-target="compare">השוואה <span id="compare-count" class="count-badge">0</span></button>
+      <button class="nav-button" type="button" data-view-target="workspace">סביבת תיק <span id="workspace-lock-icon" aria-hidden="true">🔒</span></button>
+      <button class="nav-button" type="button" data-view-target="methodology">מתודולוגיה</button>
+    </nav>
     <div class="corpus-status" id="corpus-status" aria-live="polite">טוען את המאגר…</div>
   </header>
 
-  <main class="workspace">
-    <section class="search-panel" aria-labelledby="search-heading">
-      <div class="search-heading-row">
-        <div>
-          <h1 id="search-heading">חיפוש בפסקי דין</h1>
-          <p>מספר תיק, צד, נושא, לשכה או ביטוי מתוך פסק הדין</p>
+  <main id="main-content">
+    <section class="view active" id="view-search" data-view="search">
+      <div class="search-hero">
+        <div class="search-title-row">
+          <div>
+            <h1>איתור אסמכתאות לבניית טיעון</h1>
+            <p>הדירוג נותן עדיפות למעמד המקור ולאימות, ואחריהם להתאמה עובדתית ולזיקה לאשדוד.</p>
+          </div>
+          <button class="mobile-filter-button" id="mobile-filter-button" type="button" aria-expanded="false" aria-controls="filters">סינון</button>
         </div>
-        <button class="mobile-filter-button" id="mobile-filter-button" type="button" aria-expanded="false" aria-controls="filters">סינון</button>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m2.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
+          <label class="visually-hidden" for="query">חיפוש במאגר</label>
+          <input id="query" type="search" autocomplete="off" placeholder='מספר תיק, נושא או ביטוי מדויק במרכאות'>
+          <button id="clear-query" class="icon-button" type="button" aria-label="נקה חיפוש" hidden>×</button>
+        </div>
+        <div class="lens-row" aria-label="מיקודי חיפוש מוכנים">
+          <span>מיקוד:</span>
+          <button type="button" data-lens="">הכול</button>
+          <button type="button" data-lens="ac">מזגן ורעש</button>
+          <button type="button" data-lens="water">מים וניקוז</button>
+          <button type="button" data-lens="camera">מצלמות ופרטיות</button>
+          <button type="button" data-lens="roof">גגות ופרגולות</button>
+          <button type="button" data-lens="common">רכוש משותף</button>
+          <button type="button" data-lens="jurisdiction">סמכות וסעדים</button>
+        </div>
+        <div class="search-feedback" id="search-progress" aria-live="polite"></div>
       </div>
 
-      <div class="search-box">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3m2.3-5.2a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
-        <label class="visually-hidden" for="query">חיפוש במאגר</label>
-        <input id="query" type="search" autocomplete="off" placeholder="לדוגמה: מצלמות פרטיות, 12/54/2021, רטיבות…">
-        <button id="clear-query" class="clear-query" type="button" aria-label="נקה חיפוש" hidden>×</button>
-      </div>
+      <div class="workspace-grid">
+        <aside class="filters" id="filters" aria-label="סינון תוצאות">
+          <div class="filters-header"><h2>סינון</h2><button id="reset-filters" type="button">איפוס</button></div>
+          <label for="office-filter">לשכה</label><select id="office-filter"><option value="">כל הלשכות</option></select>
+          <label for="municipality-filter">עיר</label><select id="municipality-filter"><option value="">כל הערים</option></select>
+          <label for="adjudicator-filter">מפקח/ת</label><select id="adjudicator-filter"><option value="">כל המפקחים</option></select>
+          <label for="year-filter">שנה</label><select id="year-filter"><option value="">כל השנים</option></select>
+          <label for="category-filter">נושא</label><select id="category-filter"><option value="">כל הנושאים</option></select>
+          <label for="type-filter">סוג החלטה</label><select id="type-filter"><option value="">כל הסוגים</option></select>
+          <label for="status-filter">מעמד מקור</label><select id="status-filter"><option value="">כל המקורות</option></select>
+          <label class="check-row"><input id="full-text-filter" type="checkbox"> רק עם טקסט מלא</label>
+          <label class="check-row"><input id="ashdod-filter" type="checkbox"> זיקה לאשדוד</label>
+          <label class="check-row"><input id="show-duplicates" type="checkbox"> הצג כפילויות ורשומות בדיקה</label>
+          <div class="filter-note"><strong>לפני שמצטטים</strong><p>יש לקרוא את המקור המלא ולבדוק ערעור, שינוי או ביטול.</p></div>
+        </aside>
 
-      <div class="search-mode-row">
-        <label class="switch-label">
-          <input id="full-text-toggle" type="checkbox">
-          <span class="switch" aria-hidden="true"></span>
-          <span>חיפוש בתוך הטקסט המלא</span>
-        </label>
-        <span class="search-progress" id="search-progress" aria-live="polite"></span>
+        <section class="results-section" id="results" aria-labelledby="results-title">
+          <div class="results-toolbar">
+            <div><h2 id="results-title">תוצאות מדורגות</h2><span id="result-count">—</span></div>
+            <label class="sort-control" for="sort-select"><span>מיון</span><select id="sort-select"><option value="strength">חוזק משפטי והתאמה</option><option value="date-desc">החדש ביותר</option><option value="date-asc">הישן ביותר</option><option value="case">מספר תיק</option></select></label>
+          </div>
+          <div id="loading-state" class="state-card">טוען רשומות…</div>
+          <div id="error-state" class="state-card error" hidden><strong>המאגר לא נטען</strong><span>נסו לרענן את העמוד.</span></div>
+          <div id="empty-state" class="state-card" hidden><strong>לא נמצאו תוצאות</strong><span>נסו ניסוח קצר יותר או הסירו סינון.</span></div>
+          <div class="result-list" id="result-list"></div>
+          <nav class="pagination" id="pagination" aria-label="דפדוף בתוצאות"></nav>
+        </section>
       </div>
     </section>
 
-    <div class="content-grid">
-      <aside class="filters" id="filters" aria-label="סינון תוצאות">
-        <div class="filters-header">
-          <h2>סינון</h2>
-          <button id="reset-filters" type="button">איפוס</button>
+    <section class="view page-view" id="view-compare" data-view="compare" hidden>
+      <div class="page-heading"><div><span class="eyebrow">עד ארבע החלטות</span><h1>השוואת אסמכתאות</h1><p>השוו מעמד מקור, עובדות, תוצאה וסעד לפני בחירת הפסיקה לכתב הטענות.</p></div><button id="clear-comparison" class="secondary-button" type="button">נקה השוואה</button></div>
+      <div id="comparison-empty" class="state-card"><strong>עדיין לא נבחרו החלטות</strong><span>הוסיפו החלטות מתוצאות החיפוש.</span></div>
+      <div id="comparison-table" class="comparison-table" hidden></div>
+    </section>
+
+    <section class="view page-view" id="view-workspace" data-view="workspace" hidden>
+      <div class="page-heading">
+        <div><span class="eyebrow">נשמר מוצפן במכשיר בלבד</span><h1>סביבת התיק</h1><p id="workspace-status">הסביבה נעולה. שום פרט אינו נשלח או מתפרסם.</p></div>
+        <div class="action-row">
+          <button id="workspace-unlock" class="primary-button" type="button">פתיחה / יצירה</button>
+          <button id="workspace-lock" class="secondary-button" type="button" hidden>נעילה</button>
         </div>
-
-        <label for="office-filter">לשכה</label>
-        <select id="office-filter"><option value="">כל הלשכות</option></select>
-
-        <label for="year-filter">שנה</label>
-        <select id="year-filter"><option value="">כל השנים</option></select>
-
-        <label for="category-filter">קטגוריה</label>
-        <select id="category-filter"><option value="">כל הקטגוריות</option></select>
-
-        <label for="type-filter">סוג החלטה</label>
-        <select id="type-filter"><option value="">כל הסוגים</option></select>
-
-        <div class="filter-note">
-          <strong>לפני שמצטטים</strong>
-          <p>יש לקרוא את המסמך המלא ולבדוק ערעורים, ביטול או שינוי בדין.</p>
+      </div>
+      <div id="workspace-locked" class="privacy-panel"><strong>המידע הפרטי אינו חלק מהאתר הציבורי</strong><p>הנתונים מוצפנים בדפדפן בסיסמה. הסיסמה אינה נשמרת, ואובדנה ימנע שחזור.</p></div>
+      <div id="workspace-content" hidden>
+        <div class="workspace-actions">
+          <button id="add-claim" class="primary-button" type="button">טענה חדשה</button>
+          <button id="import-seed" type="button">ייבוא תיק מקומי</button>
+          <button id="export-word" type="button">ייצוא ל־Word</button>
+          <button id="print-package" type="button">הדפסה / PDF</button>
+          <button id="export-backup" type="button">גיבוי מוצפן</button>
+          <button id="import-backup" type="button">שחזור גיבוי</button>
+          <button id="delete-workspace" class="danger-button" type="button">מחיקת המידע המקומי</button>
         </div>
-      </aside>
+        <div class="readiness-strip" id="readiness-strip"></div>
+        <div id="claims-list" class="claims-list"></div>
+      </div>
+      <input id="seed-file" type="file" accept="application/json,.json" hidden>
+      <input id="backup-file" type="file" accept="application/json,.json" hidden>
+    </section>
 
-      <section class="results-section" id="results" aria-labelledby="results-title">
-        <div class="results-toolbar">
-          <div>
-            <h2 id="results-title">תוצאות</h2>
-            <span id="result-count">—</span>
-          </div>
-          <label class="sort-control" for="sort-select">
-            <span>מיון</span>
-            <select id="sort-select">
-              <option value="date-desc">החדש ביותר</option>
-              <option value="date-asc">הישן ביותר</option>
-              <option value="case">מספר תיק</option>
-            </select>
-          </label>
-        </div>
-
-        <div id="loading-state" class="state-card">טוען פסקי דין…</div>
-        <div id="error-state" class="state-card error" hidden>
-          <strong>המאגר לא נטען</strong>
-          <span>נסו לרענן את העמוד.</span>
-        </div>
-        <div id="empty-state" class="state-card" hidden>
-          <strong>לא נמצאו תוצאות</strong>
-          <span>נסו ניסוח קצר יותר או הסירו אחד מהסינונים.</span>
-        </div>
-        <div class="result-list" id="result-list"></div>
-        <nav class="pagination" id="pagination" aria-label="דפדוף בתוצאות"></nav>
-      </section>
-    </div>
+    <section class="view page-view" id="view-methodology" data-view="methodology" hidden>
+      <div class="page-heading"><div><span class="eyebrow">שקיפות מחקרית</span><h1>מתודולוגיה ומגבלות</h1><p>כיצד הרשומות נאספו, דורגו והוצגו, ומה עדיין חייב בדיקה אנושית.</p></div></div>
+      <div class="method-grid">
+        <article><span class="method-number">01</span><h2>חוזק המקור קודם לדמיון</h2><p>ערעור או מקור שיפוטי מאומת מדורגים לפני החלטת מפקח; מקור רשמי עם טקסט מלא קודם למטא־דאטה בלבד. אשדוד מוסיפה רלוונטיות אך אינה משנה היררכיה משפטית.</p></article>
+        <article><span class="method-number">02</span><h2>מקור מול שחזור</h2><p>רשומה ששוחזרה מערעור או מהליך מאוחר מסומנת בבירור. אין לצטט ממנה קביעה שאינה מופיעה במקור המשחזר.</p></article>
+        <article><span class="method-number">03</span><h2>טקסט מלא ללא OCR</h2><p>חיפוש עמודים זמין רק במסמכים שבהם חולץ טקסט. לשאר הרשומות מוצגים מטא־דאטה וקישור מקור.</p></article>
+        <article><span class="method-number">04</span><h2>כפילויות ובדיקות</h2><p>כפילויות ורשומות בדיקה נשמרות לשקיפות ומוסתרות כברירת מחדל. אין למחוק החלטות באותו תיק ובאותו יום בלי בדיקה פרטנית.</p></article>
+        <article><span class="method-number">05</span><h2>המלצות מבוקרות</h2><p>ההתאמה מחושבת מכללים גלויים בלבד. אין שליחה לשירות AI, ואין יצירת טענה משפטית ללא מקור ומעמד אימות.</p></article>
+        <article><span class="method-number">06</span><h2>מוכנות להגשה</h2><p>השלמת שדות באתר אינה מחליפה אימות סמכות, בעלי דין, ראיות, ערעורים, אגרה, תצהיר או דרישות דיוניות ביום ההגשה.</p></article>
+      </div>
+      <div class="corpus-facts" id="corpus-facts"></div>
+    </section>
   </main>
 
-  <footer>
-    <span>מאגר עבודה משפחתי · המקורות אינם תחליף למאגר משפטי מוסמך</span>
-    <span id="updated-at"></span>
-  </footer>
+  <footer><span>מאגר מחקר ציבורי · סביבת התיק נשמרת מקומית בלבד</span><span id="updated-at"></span></footer>
 
-  <dialog id="case-dialog" aria-labelledby="dialog-title">
-    <div class="dialog-shell">
-      <button class="dialog-close" id="dialog-close" type="button" aria-label="סגור">×</button>
-      <div id="dialog-content"></div>
-    </div>
-  </dialog>
-
+  <dialog id="case-dialog" aria-labelledby="dialog-title"><div class="dialog-shell wide"><button class="dialog-close" data-close-dialog="case-dialog" type="button" aria-label="סגור">×</button><div id="dialog-content"></div></div></dialog>
+  <dialog id="secure-dialog" aria-labelledby="secure-title"><form method="dialog" class="dialog-shell secure-form" id="secure-form"><button class="dialog-close" type="button" data-close-dialog="secure-dialog" aria-label="סגור">×</button><span class="eyebrow">הצפנה מקומית</span><h2 id="secure-title">פתיחת סביבת התיק</h2><p id="secure-help"></p><label for="workspace-passphrase">סיסמה</label><input id="workspace-passphrase" type="password" minlength="8" autocomplete="current-password" required><label id="confirm-label" for="workspace-passphrase-confirm">אימות סיסמה</label><input id="workspace-passphrase-confirm" type="password" minlength="8" autocomplete="new-password"><div id="secure-error" class="form-error" aria-live="polite"></div><div class="dialog-actions"><button class="primary-button" id="secure-submit" value="default">המשך</button><button type="button" data-close-dialog="secure-dialog">ביטול</button></div></form></dialog>
+  <dialog id="attach-dialog" aria-labelledby="attach-title"><form method="dialog" class="dialog-shell" id="attach-form"><button class="dialog-close" type="button" data-close-dialog="attach-dialog" aria-label="סגור">×</button><span class="eyebrow">קישור אסמכתה</span><h2 id="attach-title">הוספה לטענה</h2><label for="attach-claim">טענה</label><select id="attach-claim"></select><label for="attach-side">תפקיד האסמכתה</label><select id="attach-side"><option value="support">תומכת</option><option value="defense">מחלישה / טענת הגנה</option></select><label for="attach-page">עמוד</label><input id="attach-page" inputmode="numeric" placeholder="לדוגמה: 12"><label for="attach-quote">ציטוט מדויק</label><textarea id="attach-quote" rows="5" placeholder="יש להעתיק מן המסמך ולבדוק מול ה־PDF"></textarea><label class="check-row"><input id="attach-verified" type="checkbox"> הציטוט אומת מול ה־PDF</label><div class="dialog-actions"><button class="primary-button" id="attach-submit" value="default">הוספה</button><button type="button" data-close-dialog="attach-dialog">ביטול</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <script src="app.js" defer></script>
 </body>
 </html>
