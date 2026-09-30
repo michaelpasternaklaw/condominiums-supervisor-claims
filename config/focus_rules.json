@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.30.4",
+  "version": "2026.09.30.5",
   "window_chars": 240,
   "max_evidence": 4,
   "role_weights": {
@@ -92,10 +92,9 @@
       "single_decisive_allowed": false
     },
     "roof": {
-      "label": "גגות, גגונים ופרגולות",
+      "label": "גגונים",
       "anchors": [
-        {"label": "גג או גגון", "pattern": "גג(?:ות|ון|ונים)?", "weight": 2.4},
-        {"label": "פרגולה", "pattern": "פרגול(?:ה|ות)", "weight": 3.0}
+        {"label": "גגון", "pattern": "גגון(?:ים)?", "weight": 3.2}
       ],
       "support": [
         "רכוש\\s+משותף|הצמד|שימוש\\s+ייחודי",
@@ -104,9 +103,9 @@
       ],
       "required_support": ["רכוש\\s+משותף|הצמד|שימוש\\s+ייחודי", "היתר|בני(?:ה|יה)|הרחב|סגיר", "הריס|הסיר|סילוק|השבת\\s+המצב"],
       "negative": [],
-      "minimum_score": 16.0,
-      "high_score": 30.0,
-      "minimum_anchor_hits": 3,
+      "minimum_score": 9.0,
+      "high_score": 18.0,
+      "minimum_anchor_hits": 2,
       "minimum_support_hits": 1,
       "minimum_required_support_hits": 2,
       "minimum_pages": 2,

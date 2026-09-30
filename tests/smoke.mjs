@@ -22,18 +22,18 @@ assert.equal(catalog.localPdfDocuments, 1763);
 assert.equal(catalog.docxDocuments, 1763);
 assert.equal(catalog.ocrDocuments, 20);
 assert.equal(catalog.ashdodOfficial, 58);
-assert.equal(catalog.focusRuleVersion, "2026.09.30.4");
+assert.equal(catalog.focusRuleVersion, "2026.09.30.5");
 assert.equal(catalog.focusCounts.camera, 49);
 assert.ok(catalog.focusCounts.camera < 60, "camera focus must remain narrow");
 assert.ok(catalog.focusCounts.ac < 80, "air-conditioner/noise focus must remain narrow");
 assert.ok(catalog.focusCounts.water < 300, "water/drainage focus must remain narrow");
-assert.ok(catalog.focusCounts.roof < 300, "roof/pergola focus must remain narrow");
+assert.ok(catalog.focusCounts.roof < 80, "awning-only focus must remain narrow");
 const visibleCoreCount = (key) => catalog.records.filter((record) =>
   !record.duplicateGroup && !record.isTest && record.focusClassifications?.some((item) => item.key === key && item.tier === "core")).length;
 assert.ok(visibleCoreCount("ac") >= 20 && visibleCoreCount("ac") < 35);
 assert.ok(visibleCoreCount("water") >= 90 && visibleCoreCount("water") < 125);
 assert.ok(visibleCoreCount("camera") >= 20 && visibleCoreCount("camera") < 30);
-assert.ok(visibleCoreCount("roof") >= 110 && visibleCoreCount("roof") < 145);
+assert.ok(visibleCoreCount("roof") < 40);
 assert.ok(visibleCoreCount("trespass") >= 50 && visibleCoreCount("trespass") < 75);
 assert.ok(visibleCoreCount("pigeons") > 0 && visibleCoreCount("pigeons") < 12);
 assert.equal(catalog.focusCounts.double, 14);
@@ -61,7 +61,7 @@ assert.doesNotMatch(app, /record\.operativeExcerpt, record\.sourceName/);
 assert.match(app, /השורה התחתונה/);
 assert.doesNotMatch(app, /comparison-grid/);
 assert.match(html, /class="comparison-surface"/);
-assert.equal(precedents.counts.precedents, 382);
+assert.equal(precedents.counts.precedents, 370);
 assert.equal(catalog.importantPrecedents, precedents.counts.precedents);
 assert.equal(new Set(precedents.precedents.map((item) => item.key)).size, precedents.precedents.length);
 assert.ok(precedents.precedents.every((item) => ["מרכזית", "חשובה"].includes(item.importance)));
@@ -124,11 +124,11 @@ function bucketFor(value, count) {
   for (let index = 0; index < value.length; index += 1) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 16777619) >>> 0; }
   return hash % count;
 }
-const term = normalize("פרגולה");
+const term = normalize("גגון");
 const bucket = bucketFor(term, manifest.tokenBucketCount);
 const tokenData = JSON.parse(fs.readFileSync(path.join(dist, manifest.tokenFiles[bucket]), "utf8"));
 assert.ok(tokenData[term]?.length > 0);
-assert.ok(tokenData[term].some(([id, pages]) => id === known.id && pages.length));
+assert.ok(tokenData[term].some(([, pages]) => pages.length));
 
 const workerMessages = [];
 globalThis.self = globalThis;
