@@ -1,6 +1,6 @@
 const STORAGE_KEY = "legal-workbench.encrypted.v1";
 const state = {
-  catalog: null, records: [], recordsById: new Map(), visible: [], page: 1, pageSize: 16,
+  catalog: null, records: [], recordsById: new Map(), precedents: [], visible: [], page: 1, pageSize: 16,
   lens: "", subfocus: "", focusLevel: "core", fullTextMatches: new Map(), searchRequestId: 0, compare: new Set(),
   workspace: null, workspacePassphrase: null, secureMode: "", attachRecordId: "",
   manifestPromise: null, pageShardCache: new Map(), evidenceShardCache: new Map(),
@@ -49,7 +49,8 @@ function cacheElements() {
     "add-claim", "claims-list", "readiness-strip", "import-seed", "seed-file", "export-word",
     "print-package", "export-backup", "import-backup", "backup-file", "delete-workspace",
     "attach-dialog", "attach-form", "attach-claim", "attach-side", "attach-page", "attach-quote",
-    "attach-verified", "corpus-facts", "toast",
+    "attach-verified", "corpus-facts", "toast", "precedent-nav-count", "precedent-query",
+    "precedent-topic", "precedent-court", "precedent-count", "precedent-list", "precedent-empty",
   ].forEach((id) => { el[id] = document.getElementById(id); });
 }
 
@@ -111,6 +112,35 @@ function renderSubfocus() {
     .map(([label, count]) => `<button type="button" data-subfocus="${escapeHtml(label)}" class="${state.subfocus === label ? "active" : ""}">${escapeHtml(label)} (${count.toLocaleString("he-IL")})</button>`).join("");
   row.innerHTML = `<span>רמת מיקוד:</span><button type="button" data-focus-level="core" class="${state.focusLevel === "core" ? "active" : ""}">ראיה חזקה בהכרעה (${coreCount.toLocaleString("he-IL")})</button><button type="button" data-focus-level="all" class="${state.focusLevel === "all" ? "active" : ""}">כולל דיון משני (${allCount.toLocaleString("he-IL")})</button><span>סוג:</span><button type="button" data-subfocus="" class="${state.subfocus ? "" : "active"}">הכול</button>${buttons}`;
   row.hidden = false;
+}
+
+function renderPrecedents() {
+  const query = normalize(el["precedent-query"].value);
+  const topic = el["precedent-topic"].value;
+  const court = el["precedent-court"].value;
+  const rows = state.precedents.filter((item) => {
+    const haystack = normalize([item.type, item.number, item.title, item.court, item.reason, ...(item.topics || [])].join(" "));
+    return (!query || query.split(/\s+/).every((token) => haystack.includes(token)))
+      && (!topic || (item.topics || []).includes(topic)) && (!court || item.court === court);
+  });
+  el["precedent-count"].textContent = `${rows.length.toLocaleString("he-IL")} אסמכתאות`;
+  el["precedent-empty"].hidden = rows.length !== 0;
+  el["precedent-list"].innerHTML = rows.map((item) => {
+    const example = item.example || {};
+    const title = item.title || "שם ההליך טרם אומת";
+    return `<article class="precedent-card">
+      <div class="precedent-card-head"><div><span class="precedent-number">${escapeHtml(item.type)} ${escapeHtml(item.number)}</span><h2>${escapeHtml(title)}</h2></div><span class="rank-pill">${escapeHtml(item.importance)}</span></div>
+      <div class="precedent-stats"><span><strong>${Number(item.citingDecisions).toLocaleString("he-IL")}</strong> החלטות מפקח מצטטות</span><span><strong>${Number(item.analyticalDecisions).toLocaleString("he-IL")}</strong> שימושים אנליטיים</span><span><strong>${Number(item.score).toLocaleString("he-IL")}</strong> ציון חשיבות</span></div>
+      <p class="precedent-reason">${escapeHtml(item.reason)}</p>
+      <div class="tags">${(item.topics || []).map((value) => badge(value, "tag")).join("")}</div>
+      ${example.snippet ? `<blockquote class="precedent-snippet"><strong>דוגמה: תיק ${escapeHtml(example.sourceCase)} · עמ׳ ${escapeHtml(example.page)}</strong><br>${escapeHtml(example.snippet)}</blockquote>` : ""}
+      <div class="precedent-actions">
+        ${example.sourceId ? `<button type="button" data-precedent-source="${escapeHtml(example.sourceId)}">פתיחת ההחלטה המצטטת</button>` : ""}
+        <button type="button" data-precedent-search="${escapeHtml(`${item.type} ${item.number}`)}">איתור בכל ההחלטות</button>
+        ${example.sourceUrl ? `<a href="${escapeHtml(example.sourceUrl)}" target="_blank" rel="noopener">מקור ההחלטה המצטטת</a>` : ""}
+      </div>
+    </article>`;
+  }).join("");
 }
 
 function ranking(record, tokens) {
@@ -233,7 +263,7 @@ function resultCard(record) {
   return `<article class="result-card" data-id="${escapeHtml(record.id)}">
     <div class="result-main">
       <div class="case-line"><span class="case-number">${escapeHtml(record.caseNumber)}</span>${badge(formatDate(record.date))}${badge(record.type)}</div>
-      <div class="badge-line"><span class="rank-pill rank-${record.verificationRank}">${escapeHtml(record.verification)}</span>${badge(record.sourceStatus)}${record.classificationConfidence ? badge(`סיווג: ${record.classificationConfidence}`) : ""}${record.sectionRole ? badge(record.sectionRole) : ""}${record.ashdodRelation ? badge("אשדוד") : ""}${record.hasFullText ? badge("טקסט מלא") : ""}${record.hasDocx ? badge("Word להורדה") : ""}</div>
+      <div class="badge-line"><span class="rank-pill rank-${record.verificationRank}">${escapeHtml(record.verification)}</span>${badge(record.sourceStatus)}${record.classificationConfidence ? badge(`סיווג: ${record.classificationConfidence}`) : ""}${record.sectionRole ? badge(record.sectionRole) : ""}${record.ashdodRelation ? badge("אשדוד") : ""}${record.hasFullText ? badge("טקסט מלא") : ""}${record.hasDocx ? badge("Word להורדה") : ""}${record.importantCitationCount ? badge(`${record.importantCitationCount} אסמכתאות חשובות`) : ""}</div>
       <h3>${escapeHtml(record.office || "לשכה לא ידועה")}${record.adjudicator ? ` · ${escapeHtml(record.adjudicator)}` : ""}</h3>
       <p>${escapeHtml(summary)}</p>
       ${record.outcome ? `<div class="decision-result"><strong>תוצאה:</strong> ${escapeHtml(record.outcome)}${record.relief ? ` · <strong>סעדים:</strong> ${escapeHtml(record.relief)}` : ""}</div>` : ""}
@@ -342,6 +372,8 @@ async function openDetails(record) {
     const snippets = (item.evidence || []).slice(0, 3).map((hit) => `<blockquote class="page-hit"><strong>עמ׳ ${escapeHtml(hit.page)} · ${escapeHtml(hit.anchor)} · ${escapeHtml(hit.role)}</strong><br>${escapeHtml(hit.snippet)}</blockquote>`).join("");
     return `<div><h4>${escapeHtml(item.label)} · ${escapeHtml(item.confidence)} · ציון ${escapeHtml(item.score)}</h4><p>${escapeHtml(item.reason)}</p>${snippets}</div>`;
   }).join("");
+  const importantCitations = (record.importantCitations || []).map((item) =>
+    `<li><strong>${escapeHtml(item.type)} ${escapeHtml(item.number)}${item.title ? ` — ${escapeHtml(item.title)}` : ""}</strong> · ${escapeHtml(item.importance)}${item.page ? ` · אזכור בעמ׳ ${escapeHtml(item.page)}` : ""}<br><small>${escapeHtml(item.court)} · ${escapeHtml((item.topics || []).slice(0, 4).join(" · "))}</small></li>`).join("");
   el["dialog-content"].innerHTML = `
     <div class="dialog-kicker">${escapeHtml(record.type)} · ${escapeHtml(record.verification)}</div>
     <h2 class="dialog-title" id="dialog-title">${escapeHtml(record.caseNumber)}</h2>
@@ -354,6 +386,7 @@ async function openDetails(record) {
     ${focusDetails ? `<div class="dialog-section"><h3>מיקוד מחמיר — קטעי ראיה קצרים</h3>${focusDetails}<p class="operative-warning">גרסת מיקוד: ${escapeHtml(record.focusRuleVersion || "לא צוינה")}. הסיווג מקומי ודטרמיניסטי; יש לאמת את הקטע מול המסמך.</p></div>` : ""}
     ${classificationDetails ? `<div class="dialog-section"><h3>בסיס הסיווג המקומי</h3><ul class="classification-list">${classificationDetails}</ul><p class="operative-warning">גרסת כללים: ${escapeHtml(record.ruleVersion || "לא צוינה")}. “טענת תובע/נתבע” אינה מוצגת כקביעה של המפקח.</p></div>` : ""}
     ${citationLinks ? `<div class="dialog-section"><h3>הפניות לתיקים שאותרו בטקסט</h3><ul class="classification-list">${citationLinks}</ul></div>` : ""}
+    ${importantCitations ? `<div class="dialog-section"><h3>פסיקה חשובה המצוטטת בהחלטה</h3><ul class="classification-list">${importantCitations}</ul>${record.importantCitationCount > 12 ? `<p class="operative-warning">מוצגות 12 מתוך ${escapeHtml(record.importantCitationCount)} אסמכתאות מאוחדות.</p>` : ""}</div>` : ""}
     ${record.operativeExcerpt ? `<div class="dialog-section operative-section">
       <div class="operative-header"><div><span class="eyebrow">מה נפסק בפועל</span><h3>הכרעה וסעדים</h3></div><span class="pill">חילוץ אוטומטי · ודאות ${escapeHtml(record.operativeConfidence || "לא סווגה")}</span></div>
       <div class="operative-summary">${detailItem("תוצאה", record.outcome)}${detailItem("סעדים שאותרו", record.relief)}${detailItem("עמודי מקור", (record.operativePages || []).join(", "))}</div>
@@ -578,6 +611,18 @@ function bindEvents() {
     requestFullTextSearch(el.query.value);
   });
   el.query.addEventListener("input", queryChanged);
+  el["precedent-query"].addEventListener("input", debounce(renderPrecedents, 120));
+  el["precedent-topic"].addEventListener("change", renderPrecedents);
+  el["precedent-court"].addEventListener("change", renderPrecedents);
+  el["precedent-list"].addEventListener("click", (event) => {
+    const source = event.target.closest("[data-precedent-source]");
+    if (source) { const record = state.recordsById.get(source.dataset.precedentSource); if (record) openDetails(record); return; }
+    const search = event.target.closest("[data-precedent-search]");
+    if (!search) return;
+    el.query.value = search.dataset.precedentSearch;
+    el["clear-query"].hidden = false;
+    switchView("search"); state.page = 1; applyFilters(); requestFullTextSearch(el.query.value);
+  });
   el["clear-query"].addEventListener("click", () => { el.query.value = ""; el["clear-query"].hidden = true; requestFullTextSearch(""); el.query.focus(); });
   document.querySelectorAll("[data-lens]").forEach((button) => button.addEventListener("click", () => {
     state.lens = button.dataset.lens;
@@ -737,9 +782,11 @@ function restoreSearchFromUrl() {
 async function init() {
   cacheElements(); bindEvents();
   try {
-    const response = await fetch("data/catalog.json");
-    if (!response.ok) throw new Error("catalog");
+    const [response, precedentResponse] = await Promise.all([fetch("data/catalog.json"), fetch("data/precedents-focus.json")]);
+    if (!response.ok || !precedentResponse.ok) throw new Error("catalog");
     state.catalog = await response.json();
+    const precedentPayload = await precedentResponse.json();
+    state.precedents = precedentPayload.precedents || [];
     state.records = state.catalog.records;
     state.recordsById = new Map(state.records.map((record) => [record.id, record]));
     addOptions(el["office-filter"], state.catalog.offices);
@@ -751,6 +798,10 @@ async function init() {
     addOptions(el["status-filter"], state.catalog.sourceStatuses);
     addOptions(el["confidence-filter"], state.catalog.classificationConfidences || []);
     addOptions(el["availability-filter"], state.catalog.documentAvailabilities || []);
+    addOptions(el["precedent-topic"], [...new Set(state.precedents.flatMap((item) => item.topics || []))].sort((a, b) => a.localeCompare(b, "he")));
+    addOptions(el["precedent-court"], [...new Set(state.precedents.map((item) => item.court).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")));
+    el["precedent-nav-count"].textContent = state.precedents.length.toLocaleString("he-IL");
+    renderPrecedents();
     document.querySelectorAll("[data-lens]").forEach((button) => {
       const key = button.dataset.lens;
       const count = key
@@ -764,7 +815,7 @@ async function init() {
     restoreSearchFromUrl(); applyFilters(false);
     if (el.query.value) requestFullTextSearch(el.query.value);
     const initialView = location.hash.replace("#", "") || "search";
-    switchView(["search", "compare", "workspace", "methodology"].includes(initialView) ? initialView : "search");
+    switchView(["search", "precedents", "compare", "workspace", "methodology"].includes(initialView) ? initialView : "search");
   } catch (error) {
     el["loading-state"].hidden = true; el["error-state"].hidden = false; el["corpus-status"].textContent = "המאגר אינו זמין";
   }

@@ -122,8 +122,9 @@ def classify_document(sections: list[sqlite3.Row], rules_source: dict, rules: di
             continue
         confidence = "גבוהה" if score >= float(rule["high_score"]) and (decisive_hits or len(pages) >= 2) else "ממוקדת"
         best = evidence_hits[0]
+        enough_core_hits = decisive_hits >= 2 or bool(rule.get("single_core_allowed") and decisive_hits >= 1)
         tier = "core" if (
-            confidence == "גבוהה" and decisive_hits >= 2 and best["role"] in {"holding", "operative"}
+            confidence == "גבוהה" and enough_core_hits and best["role"] in {"holding", "operative"}
         ) else "related"
         reasons = [f"{anchor_hits} מופעי עוגן", f"{len(pages)} עמודים", f"{support_hits} התאמות הקשר"]
         if decisive_hits:

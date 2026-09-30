@@ -108,6 +108,22 @@ h1 { margin-bottom: .35rem; font-size: clamp(1.7rem, 3vw, 2.55rem); line-height:
 .page-view { padding: 2.25rem clamp(1rem, 5vw, 5.5rem) 4rem; max-width: 1500px; margin: auto; }
 .page-heading { padding-bottom: 1.2rem; margin-bottom: 1.2rem; border-bottom: 1px solid var(--line); }
 .eyebrow { display: block; color: var(--gold); font-weight: 800; font-size: .78rem; letter-spacing: .07em; text-transform: uppercase; }
+.precedent-toolbar { display: grid; grid-template-columns: minmax(260px, 2fr) minmax(180px, 1fr) minmax(180px, 1fr) auto; gap: .8rem; align-items: end; padding: 1rem; margin-bottom: 1rem; background: white; border: 1px solid var(--line); }
+.precedent-toolbar label span { display: block; margin-bottom: .3rem; color: var(--ink-2); font-size: .78rem; font-weight: 700; }
+.precedent-toolbar input, .precedent-toolbar select { width: 100%; min-height: 42px; border: 1px solid #b9c8d1; background: white; padding: .55rem .65rem; }
+.precedent-toolbar > strong { padding: .7rem .8rem; white-space: nowrap; color: var(--teal); }
+.precedent-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+.precedent-card { display: flex; flex-direction: column; min-width: 0; padding: 1rem; background: white; border: 1px solid var(--line); border-top: 4px solid var(--gold); box-shadow: 2px 2px 0 #e4eaed; }
+.precedent-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.precedent-card-head h2 { margin: .3rem 0 .65rem; font-size: 1.05rem; }
+.precedent-number { color: var(--teal); font-weight: 800; }
+.precedent-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; margin-bottom: .7rem; }
+.precedent-stats span { padding: .55rem; background: #f3f7f8; color: var(--muted); font-size: .73rem; }
+.precedent-stats strong { display: block; color: var(--ink); font-size: 1.05rem; }
+.precedent-reason { margin: 0 0 .65rem; color: #344f5f; font-size: .86rem; }
+.precedent-snippet { margin: .75rem 0; padding: .7rem; max-height: 190px; overflow: auto; background: var(--gold-soft); border: 0; border-right: 3px solid var(--gold); color: #4c402c; font-size: .8rem; }
+.precedent-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: auto; padding-top: .4rem; }
+.precedent-actions button, .precedent-actions a { text-decoration: none; border: 1px solid var(--ink-2); background: white; color: var(--ink); padding: .45rem .65rem; font-size: .8rem; }
 #view-compare { max-width: 1640px; }
 .compare-heading { align-items: center; }
 .compare-empty { max-width: 620px; margin: 3rem auto; padding: 2.2rem; border-top: 4px solid var(--teal); }
@@ -214,6 +230,7 @@ dialog::backdrop { background: rgba(10, 29, 42, .65); }
   .corpus-status { display: none; }
   .workspace-grid { grid-template-columns: 230px minmax(0,1fr); }
   .method-grid { grid-template-columns: repeat(2, 1fr); }
+  .precedent-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .compare-overview { grid-template-columns: repeat(3, 1fr); }
   .compare-insight { grid-column: span 3; border-top: 1px solid rgba(255,255,255,.15); }
   .comparison-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -234,7 +251,7 @@ dialog::backdrop { background: rgba(10, 29, 42, .65); }
   .results-toolbar { align-items: flex-start; }
   .sort-control { display: block; }
   .sort-control select { min-width: 0; max-width: 160px; }
-  .method-grid, .claim-body, .readiness-strip, .detail-grid, .operative-summary { grid-template-columns: 1fr; }
+  .method-grid, .claim-body, .readiness-strip, .detail-grid, .operative-summary, .precedent-toolbar, .precedent-grid { grid-template-columns: 1fr; }
   .operative-header { display: block; }
   .compare-heading .action-row { margin-top: 1rem; }
   .compare-overview { grid-template-columns: repeat(2, 1fr); }

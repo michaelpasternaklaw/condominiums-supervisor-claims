@@ -19,6 +19,7 @@
     </button>
     <nav class="main-nav" aria-label="ניווט ראשי">
       <button class="nav-button active" type="button" data-view-target="search">חיפוש</button>
+      <button class="nav-button" type="button" data-view-target="precedents">פסיקה חשובה <span id="precedent-nav-count" class="count-badge">0</span></button>
       <button class="nav-button" type="button" data-view-target="compare">השוואה <span id="compare-count" class="count-badge">0</span></button>
       <button class="nav-button" type="button" data-view-target="workspace">סביבת תיק <span id="workspace-lock-icon" aria-hidden="true">🔒</span></button>
       <button class="nav-button" type="button" data-view-target="methodology">מתודולוגיה</button>
@@ -45,11 +46,14 @@
         <div class="lens-row" aria-label="מיקודי חיפוש מוכנים">
           <span>מיקוד:</span>
           <button type="button" data-lens="">הכול</button>
-          <button type="button" data-lens="ac">מזגן ורעש</button>
+          <button type="button" data-lens="ac">מזגן, רעש, רטט וחום</button>
           <button type="button" data-lens="water">מים וניקוז</button>
-          <button type="button" data-lens="camera">מצלמות ופרטיות</button>
-          <button type="button" data-lens="roof">גגות ופרגולות</button>
-          <button type="button" data-lens="common">רכוש משותף</button>
+          <button type="button" data-lens="camera">מצלמות, פרטיות והאזנת סתר</button>
+          <button type="button" data-lens="roof">גגות, גגונים ופרגולות</button>
+          <button type="button" data-lens="common">רכוש משותף ושימוש ייחודי</button>
+          <button type="button" data-lens="trespass">סילוק יד והסגת גבול</button>
+          <button type="button" data-lens="pigeons">יונים ומפגעים</button>
+          <button type="button" data-lens="double">מניעת כפל</button>
           <button type="button" data-lens="jurisdiction">סמכות וסעדים</button>
         </div>
         <div class="lens-row subfocus-row" id="subfocus-row" aria-label="מיקוד משנה" hidden></div>
@@ -87,6 +91,20 @@
           <nav class="pagination" id="pagination" aria-label="דפדוף בתוצאות"></nav>
         </section>
       </div>
+    </section>
+
+    <section class="view page-view" id="view-precedents" data-view="precedents" hidden>
+      <div class="page-heading">
+        <div><span class="eyebrow">אסמכתאות שאותרו בתוך החלטות המפקחים</span><h1>פסיקה חשובה לפי נושא</h1><p>כל אסמכתה אוחדה לפי סוג ומספר הליך. הדירוג מבוסס על מספר החלטות מצטטות, אופי השימוש ומעמד הערכאה; הקטעים הם נקודת כניסה לבדיקה במקור.</p></div>
+      </div>
+      <div class="precedent-toolbar">
+        <label for="precedent-query"><span>חיפוש אסמכתה</span><input id="precedent-query" type="search" placeholder="לדוגמה: קרשין, 7828/06 או רכוש משותף"></label>
+        <label for="precedent-topic"><span>נושא</span><select id="precedent-topic"><option value="">כל הנושאים</option></select></label>
+        <label for="precedent-court"><span>ערכאה</span><select id="precedent-court"><option value="">כל הערכאות</option></select></label>
+        <strong id="precedent-count">—</strong>
+      </div>
+      <div id="precedent-list" class="precedent-grid"></div>
+      <div id="precedent-empty" class="state-card" hidden><strong>לא נמצאו אסמכתאות</strong><span>נסו מספר הליך, שם צד או נושא אחר.</span></div>
     </section>
 
     <section class="view page-view" id="view-compare" data-view="compare" hidden>
@@ -130,7 +148,7 @@
         <article><span class="method-number">01</span><h2>חוזק המקור קודם לדמיון</h2><p>ערעור או מקור שיפוטי מאומת מדורגים לפני החלטת מפקח; מקור רשמי עם טקסט מלא קודם למטא־דאטה בלבד. אשדוד מוסיפה רלוונטיות אך אינה משנה היררכיה משפטית.</p></article>
         <article><span class="method-number">02</span><h2>מקור מול שחזור</h2><p>רשומה ששוחזרה מערעור או מהליך מאוחר מסומנת בבירור. אין לצטט ממנה קביעה שאינה מופיעה במקור המשחזר.</p></article>
         <article><span class="method-number">03</span><h2>המרת טקסט, Word וסיווג</h2><p>הטקסט חולץ וסווג מקומית בכללים גלויים. מיקוד נושא מציג כברירת מחדל רק התאמות בביטחון גבוה שבהן נמצאו לפחות שני מופעים בדיון או בהכרעה; ניתן להרחיב לדיון משני. קובצי Word נוצרו אוטומטית מן הטקסט שחולץ ואינם מסמכים רשמיים.</p></article>
-        <article><span class="method-number">04</span><h2>כפילויות ובדיקות</h2><p>כפילויות ורשומות בדיקה נשמרות לשקיפות ומוסתרות כברירת מחדל. אין למחוק החלטות באותו תיק ובאותו יום בלי בדיקה פרטנית.</p></article>
+        <article><span class="method-number">04</span><h2>כפילויות ופסיקה מצוטטת</h2><p>כפילויות ורשומות בדיקה מוסתרות כברירת מחדל. מאגר הפסיקה החשובה מאחד כל אסמכתה לפי סוג ומספר הליך ושומר לכל החלטת מפקח קטע מצטט אחד מיטבי, כדי למנוע כפל מלאכותי בדירוג.</p></article>
         <article><span class="method-number">05</span><h2>המלצות מבוקרות</h2><p>ההתאמה מחושבת מכללים גלויים בלבד. אין שליחה לשירות AI, ואין יצירת טענה משפטית ללא מקור ומעמד אימות.</p></article>
         <article><span class="method-number">06</span><h2>מוכנות להגשה</h2><p>השלמת שדות באתר אינה מחליפה אימות סמכות, בעלי דין, ראיות, ערעורים, אגרה, תצהיר או דרישות דיוניות ביום ההגשה.</p></article>
       </div>

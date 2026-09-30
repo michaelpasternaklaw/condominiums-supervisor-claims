@@ -28,6 +28,7 @@ DOCX_EXPORT = PROJECT_ROOT / "outputs/legal_decisions_database/full_export/docx_
 FULL_CLASSIFICATION = PROJECT_ROOT / "outputs/legal_decisions_database/full_text_classification.csv"
 PIPELINE_EXPORT = REPOSITORY / "pipeline-public.json"
 FOCUS_EXPORT = REPOSITORY / "focus-public.json"
+PRECEDENTS_FOCUS = PROJECT_ROOT / "outputs/legal_decisions_database/precedents/precedents_focus.json"
 TOKEN_BUCKETS = 64
 PAGE_SHARDS = 64
 EVIDENCE_SHARDS = 64
@@ -373,6 +374,25 @@ def main() -> None:
     pipeline_by_id = pipeline.get("records", {})
     focus = json.loads(FOCUS_EXPORT.read_text(encoding="utf-8")) if FOCUS_EXPORT.exists() else {"version": "", "records": {}, "counts": {}}
     focus_by_id = focus.get("records", {})
+    if not PRECEDENTS_FOCUS.is_file():
+        raise RuntimeError("Focused precedents export is missing; run tools/build_precedents_index.py")
+    precedent_focus = json.loads(PRECEDENTS_FOCUS.read_text(encoding="utf-8"))
+    precedent_rows = precedent_focus.get("precedents", [])
+    precedent_keys = [item.get("key") for item in precedent_rows]
+    if not precedent_rows or len(precedent_keys) != len(set(precedent_keys)):
+        raise RuntimeError("Focused precedents export is empty or contains duplicates")
+    important_by_source: dict[str, list[dict]] = defaultdict(list)
+    for precedent in precedent_rows:
+        for citation in precedent.get("citingDecisionEvidence", []):
+            important_by_source[citation.get("sourceId", "")].append({
+                "key": precedent.get("key", ""), "type": precedent.get("type", ""),
+                "number": precedent.get("number", ""), "title": precedent.get("title", ""),
+                "court": precedent.get("court", ""), "importance": precedent.get("importance", ""),
+                "score": precedent.get("score", 0), "topics": precedent.get("topics", []),
+                "page": citation.get("page"), "snippet": citation.get("snippet", ""),
+            })
+    for values in important_by_source.values():
+        values.sort(key=lambda item: (-float(item.get("score", 0)), item.get("key", "")))
 
     if len(master_rows) != 1799:
         raise RuntimeError(f"Expected 1,799 master rows, found {len(master_rows)}")
@@ -544,6 +564,8 @@ def main() -> None:
             "focusClassifications": focus_summaries,
             "focusTopics": [item.get("key") for item in focus_summaries],
             "focusRuleVersion": focus.get("version", ""),
+            "importantCitations": important_by_source.get(row["מזהה רשומה"], [])[:12],
+            "importantCitationCount": len(important_by_source.get(row["מזהה רשומה"], [])),
         }
         if pipeline_record:
             evidence_shard = stable_bucket(row["מזהה רשומה"], EVIDENCE_SHARDS)
@@ -579,9 +601,12 @@ def main() -> None:
         "documentAvailabilities": sorted({item["documentAvailability"] for item in catalog if item["documentAvailability"]}),
         "focusRuleVersion": focus.get("version", ""),
         "focusCounts": focus.get("counts", {}),
+        "importantPrecedents": len(precedent_rows),
+        "precedentTopicCounts": precedent_focus.get("counts", {}).get("topics", {}),
         "records": catalog,
     }
     (data_dir / "catalog.json").write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    shutil.copy2(PRECEDENTS_FOCUS, data_dir / "precedents-focus.json")
 
     expected_search: set[str] = set()
     token_files = []
@@ -650,6 +675,7 @@ def main() -> None:
         "pdfBytes": copied_pdf_bytes, "docxBytes": copied_docx_bytes, "tokenBuckets": TOKEN_BUCKETS,
         "pageShards": PAGE_SHARDS, "evidenceShards": EVIDENCE_SHARDS,
         "focusRuleVersion": focus.get("version", ""), "focusCounts": focus.get("counts", {}),
+        "importantPrecedents": len(precedent_rows),
         "distBytes": dist_bytes, "maxFileBytes": max(path.stat().st_size for path in files),
         "limits": {"siteBytes": MAX_SITE_BYTES, "fileBytes": MAX_FILE_BYTES},
         "ashdod": {"official": ashdod_official, "reconstructed": ashdod_reconstructed, "leads": ashdod_leads},
