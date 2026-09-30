@@ -54,6 +54,8 @@ h1 { margin-bottom: .35rem; font-size: clamp(1.7rem, 3vw, 2.55rem); line-height:
 .lens-row { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-top: 1rem; color: var(--muted); font-size: .9rem; }
 .lens-row button { border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); padding: .35rem .7rem; border-radius: 99px; }
 .lens-row button.active, .lens-row button:hover { background: var(--teal-soft); border-color: var(--teal); color: var(--teal); }
+.subfocus-row { margin-top: .55rem; padding-top: .55rem; border-top: 1px dashed var(--line); }
+.subfocus-row span { font-weight: 700; color: var(--ink-2); }
 .search-feedback { min-height: 1.35rem; margin-top: .45rem; color: var(--teal); font-size: .85rem; }
 .mobile-filter-button { display: none; border: 1px solid var(--ink); background: white; padding: .55rem .9rem; }
 

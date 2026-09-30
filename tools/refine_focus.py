@@ -104,24 +104,38 @@ def classify_document(sections: list[sqlite3.Row], rules_source: dict, rules: di
         score = round(sum(hit["score"] for hit in hits[:8]), 2)
         enough_anchors = anchor_hits >= int(rule["minimum_anchor_hits"])
         decisive_exception = bool(rule.get("single_decisive_allowed") and decisive_hits and anchor_hits >= 1)
+        enough_pages = len(pages) >= int(rule.get("minimum_pages", 1))
+        decisive_or_dominant = (
+            decisive_hits >= int(rule.get("minimum_decisive_hits", 0))
+            or score >= float(rule.get("non_decisive_score", 0))
+        )
         eligible = (
             score >= float(rule["minimum_score"])
             and support_hits >= int(rule["minimum_support_hits"])
             and required_support_hits >= int(rule.get("minimum_required_support_hits", 0))
             and (not rule["required_anchor_regex"] or required_anchor_hits > 0)
             and (enough_anchors or decisive_exception)
+            and enough_pages
+            and decisive_or_dominant
         )
         if not eligible:
             continue
         confidence = "גבוהה" if score >= float(rule["high_score"]) and (decisive_hits or len(pages) >= 2) else "ממוקדת"
         best = evidence_hits[0]
+        tier = "core" if (
+            confidence == "גבוהה" and decisive_hits >= 2 and best["role"] in {"holding", "operative"}
+        ) else "related"
         reasons = [f"{anchor_hits} מופעי עוגן", f"{len(pages)} עמודים", f"{support_hits} התאמות הקשר"]
         if decisive_hits:
             reasons.append(f"{decisive_hits} מופעים בדיון או בהכרעה")
         output.append({
-            "key": key, "label": rule["label"], "confidence": confidence, "score": score,
+            "key": key, "label": rule["label"], "confidence": confidence, "tier": tier, "score": score,
             "sectionRole": ROLE_LABELS.get(best["role"], best["role"]), "pages": pages[:12],
-            "reason": " · ".join(reasons), "evidence": evidence_hits[:max_evidence],
+            "reason": " · ".join(reasons),
+            "anchors": [{"label": label, "count": count} for label, count in sorted(Counter(hit["anchor"] for hit in hits).items())],
+            "metrics": {"anchorHits": anchor_hits, "pageCount": len(pages), "supportHits": support_hits,
+                        "requiredSupportHits": required_support_hits, "decisiveHits": decisive_hits},
+            "evidence": evidence_hits[:max_evidence],
         })
     return sorted(output, key=lambda item: (-item["score"], item["label"]))
 

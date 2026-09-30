@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.30.1",
+  "version": "2026.09.30.2",
   "window_chars": 240,
   "max_evidence": 4,
   "role_weights": {
@@ -30,30 +30,39 @@
         "צילום\\s+(?:api|מסמך|המסמך|התיק|נספח|עמוד)|תצלום\\s+אוויר",
         "צילום\\s+עם\\s+מצלמ|בדיקה\\s+באמצעות\\s+מצלמ|מצלמ(?:ה|ת)\\s+(?:ביוב|צנרת|תרמית)"
       ],
-      "minimum_score": 6.0,
-      "high_score": 12.0,
+      "minimum_score": 12.0,
+      "high_score": 24.0,
       "minimum_anchor_hits": 2,
       "minimum_support_hits": 1,
-      "minimum_required_support_hits": 1,
-      "single_decisive_allowed": true
+      "minimum_required_support_hits": 2,
+      "minimum_pages": 2,
+      "minimum_decisive_hits": 1,
+      "non_decisive_score": 24.0,
+      "single_decisive_allowed": false
     },
     "ac": {
       "label": "מזגן, רעש ורטט",
       "anchors": [
         {"label": "מזגן או מיזוג", "pattern": "מזגנ(?:ים|י|ו|ה)?|מזגן|מיזוג\\s+אוויר|יחידת\\s+מיזוג|מערכת\\s+מיזוג", "weight": 3.0},
-        {"label": "מעבה או מדחס", "pattern": "מעב(?:ה|ים)|מדחס(?:ים)?", "weight": 2.7}
+        {"label": "מעבה או מדחס", "pattern": "מעב(?:ה|ים)|מדחס(?:ים)?", "weight": 2.7},
+        {"label": "רעש או רטט", "pattern": "רעש|רטט", "weight": 2.5}
       ],
       "support": [
         "רעש|רטט|מטרד|דציבל|אקוסט",
         "רכוש\\s+משותף|חזית|קיר\\s+חיצוני|גג",
         "הסיר|סילוק|התקינ|העתק|צו\\s+מניעה"
       ],
+      "required_support": ["מטרד|דציבל|אקוסט|מדיד(?:ת|ה)\\s+רעש", "הסיר|סילוק|התקינ|העתק|צו\\s+מניעה|להפסיק|מנוע"],
       "negative": [],
-      "minimum_score": 5.5,
-      "high_score": 11.0,
+      "minimum_score": 12.0,
+      "high_score": 24.0,
       "minimum_anchor_hits": 2,
       "minimum_support_hits": 1,
-      "single_decisive_allowed": true
+      "minimum_required_support_hits": 2,
+      "minimum_pages": 2,
+      "minimum_decisive_hits": 1,
+      "non_decisive_score": 24.0,
+      "single_decisive_allowed": false
     },
     "water": {
       "label": "מים, רטיבות וניקוז",
@@ -67,31 +76,40 @@
         "תיקו|לתקן|אחריות|חוות\\s+דעת|מומחה",
         "רכוש\\s+משותף|גג|קיר|דירה"
       ],
+      "required_support": ["חדיר(?:ת|ה)\\s+מים|הצפ(?:ה|ות)|עובש|נזק", "תיקו|לתקן|אחריות|חוות\\s+דעת|מומחה"],
       "negative": ["חשבון\\s+מים|מד\\s+מים"],
-      "minimum_score": 6.0,
-      "high_score": 12.0,
-      "minimum_anchor_hits": 2,
+      "minimum_score": 18.0,
+      "high_score": 32.0,
+      "minimum_anchor_hits": 3,
       "minimum_support_hits": 1,
-      "single_decisive_allowed": true
+      "minimum_required_support_hits": 2,
+      "minimum_pages": 2,
+      "minimum_decisive_hits": 1,
+      "non_decisive_score": 32.0,
+      "single_decisive_allowed": false
     },
     "roof": {
       "label": "גגות, פרגולות, חצרות וגינות",
       "anchors": [
         {"label": "גג או גגון", "pattern": "גג(?:ות|ון|ונים)?", "weight": 2.4},
-        {"label": "פרגולה", "pattern": "פרגול(?:ה|ות)", "weight": 3.0},
-        {"label": "חצר או גינה", "pattern": "חצר(?:ות)?|גינ(?:ה|ות)", "weight": 2.3}
+        {"label": "פרגולה", "pattern": "פרגול(?:ה|ות)", "weight": 3.0}
       ],
       "support": [
         "רכוש\\s+משותף|הצמד|שימוש\\s+ייחודי",
         "היתר|בני(?:ה|יה)|הרחב|סגיר",
         "הריס|הסיר|סילוק|השבת\\s+המצב"
       ],
+      "required_support": ["רכוש\\s+משותף|הצמד|שימוש\\s+ייחודי", "היתר|בני(?:ה|יה)|הרחב|סגיר", "הריס|הסיר|סילוק|השבת\\s+המצב"],
       "negative": [],
-      "minimum_score": 6.0,
-      "high_score": 12.0,
-      "minimum_anchor_hits": 2,
+      "minimum_score": 16.0,
+      "high_score": 30.0,
+      "minimum_anchor_hits": 3,
       "minimum_support_hits": 1,
-      "single_decisive_allowed": true
+      "minimum_required_support_hits": 2,
+      "minimum_pages": 2,
+      "minimum_decisive_hits": 1,
+      "non_decisive_score": 30.0,
+      "single_decisive_allowed": false
     },
     "common": {
       "label": "רכוש משותף ושימוש ייחודי",

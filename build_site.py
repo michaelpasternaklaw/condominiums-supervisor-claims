@@ -429,7 +429,7 @@ def main() -> None:
         classified = classification_by_id.get(row["מזהה רשומה"], {})
         pipeline_record = pipeline_by_id.get(row["מזהה רשומה"], {})
         focus_items = focus_by_id.get(row["מזהה רשומה"], [])
-        focus_summaries = [{key: item.get(key) for key in ("key", "label", "confidence", "score", "sectionRole", "pages", "reason")}
+        focus_summaries = [{key: item.get(key) for key in ("key", "label", "confidence", "tier", "score", "sectionRole", "pages", "reason", "anchors", "metrics")}
                            for item in focus_items]
         exported_pdf = Path(exported["PDF מקומי מלא"]) if exported.get("PDF מקומי מלא") else None
         exported_text = Path(exported["טקסט מקומי"]) if exported.get("טקסט מקומי") else None

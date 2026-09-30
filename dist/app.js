@@ -1,7 +1,7 @@
 const STORAGE_KEY = "legal-workbench.encrypted.v1";
 const state = {
   catalog: null, records: [], recordsById: new Map(), visible: [], page: 1, pageSize: 16,
-  lens: "", fullTextMatches: new Map(), searchRequestId: 0, compare: new Set(),
+  lens: "", subfocus: "", focusLevel: "core", fullTextMatches: new Map(), searchRequestId: 0, compare: new Set(),
   workspace: null, workspacePassphrase: null, secureMode: "", attachRecordId: "",
   manifestPromise: null, pageShardCache: new Map(), evidenceShardCache: new Map(),
 };
@@ -37,7 +37,7 @@ function toast(message) {
 
 function cacheElements() {
   [
-    "corpus-status", "query", "clear-query", "search-progress", "office-filter",
+    "corpus-status", "query", "clear-query", "search-progress", "subfocus-row", "office-filter",
     "municipality-filter", "adjudicator-filter", "year-filter", "category-filter",
     "type-filter", "status-filter", "confidence-filter", "availability-filter", "full-text-filter", "word-filter", "ashdod-filter", "show-duplicates",
     "sort-select", "result-count", "result-list", "pagination", "loading-state", "empty-state",
@@ -82,11 +82,35 @@ function parseMetadataTokens(value) {
 
 function lensMatches(record) {
   if (!state.lens) return true;
-  return (record.focusTopics || []).includes(state.lens);
+  const focus = (record.focusClassifications || []).find((item) => item.key === state.lens);
+  if (!focus) return false;
+  if (state.focusLevel === "core" && focus.tier !== "core") return false;
+  return !state.subfocus || (focus.anchors || []).some((anchor) => anchor.label === state.subfocus);
 }
 
 function activeFocus(record) {
   return (record.focusClassifications || []).find((item) => item.key === state.lens);
+}
+
+function renderSubfocus() {
+  const row = el["subfocus-row"];
+  if (!state.lens) { row.hidden = true; row.innerHTML = ""; return; }
+  const counts = new Map();
+  let coreCount = 0; let allCount = 0;
+  for (const record of state.records) {
+    if (record.duplicateGroup || record.isTest) continue;
+    const focus = (record.focusClassifications || []).find((item) => item.key === state.lens);
+    if (!focus) continue;
+    allCount += 1;
+    if (focus.tier === "core") coreCount += 1;
+    if (state.focusLevel === "core" && focus.tier !== "core") continue;
+    for (const anchor of focus.anchors || []) counts.set(anchor.label, (counts.get(anchor.label) || 0) + 1);
+  }
+  if (state.subfocus && !counts.has(state.subfocus)) state.subfocus = "";
+  const buttons = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "he"))
+    .map(([label, count]) => `<button type="button" data-subfocus="${escapeHtml(label)}" class="${state.subfocus === label ? "active" : ""}">${escapeHtml(label)} (${count.toLocaleString("he-IL")})</button>`).join("");
+  row.innerHTML = `<span>רמת מיקוד:</span><button type="button" data-focus-level="core" class="${state.focusLevel === "core" ? "active" : ""}">ראיה חזקה בהכרעה (${coreCount.toLocaleString("he-IL")})</button><button type="button" data-focus-level="all" class="${state.focusLevel === "all" ? "active" : ""}">כולל דיון משני (${allCount.toLocaleString("he-IL")})</button><span>סוג:</span><button type="button" data-subfocus="" class="${state.subfocus ? "" : "active"}">הכול</button>${buttons}`;
+  row.hidden = false;
 }
 
 function ranking(record, tokens) {
@@ -112,7 +136,7 @@ function updateUrl() {
     ["city", el["municipality-filter"].value], ["judge", el["adjudicator-filter"].value],
     ["year", el["year-filter"].value], ["topic", el["category-filter"].value],
     ["type", el["type-filter"].value], ["status", el["status-filter"].value],
-    ["confidence", el["confidence-filter"].value], ["availability", el["availability-filter"].value], ["lens", state.lens],
+    ["confidence", el["confidence-filter"].value], ["availability", el["availability-filter"].value], ["lens", state.lens], ["subfocus", state.subfocus], ["scope", state.lens ? state.focusLevel : ""],
   ];
   mappings.forEach(([key, value]) => { if (value) params.set(key, value); });
   if (el["full-text-filter"].checked) params.set("fullText", "1");
@@ -214,7 +238,7 @@ function resultCard(record) {
       <p>${escapeHtml(summary)}</p>
       ${record.outcome ? `<div class="decision-result"><strong>תוצאה:</strong> ${escapeHtml(record.outcome)}${record.relief ? ` · <strong>סעדים:</strong> ${escapeHtml(record.relief)}` : ""}</div>` : ""}
       ${(record.defenseTopics || []).length ? `<div class="why-row"><strong>טענות הגנה שאותרו:</strong> ${escapeHtml(record.defenseTopics.slice(0, 4).join(" · "))}</div>` : ""}
-      ${focus ? `<div class="decision-result"><strong>מיקוד מקומי: ${escapeHtml(focus.label)}</strong> · ${escapeHtml(focus.confidence)} · ${escapeHtml(focus.reason)}${focus.pages?.length ? ` · עמ׳ ${escapeHtml(focus.pages.slice(0, 6).join(", "))}` : ""}</div>` : ""}
+      ${focus ? `<div class="decision-result"><strong>מיקוד מקומי: ${escapeHtml(focus.label)}</strong> · ${focus.tier === "core" ? "ראיה חזקה בהכרעה" : "דיון מהותי משני"} · ${escapeHtml(focus.confidence)} · ${escapeHtml(focus.reason)}${focus.pages?.length ? ` · עמ׳ ${escapeHtml(focus.pages.slice(0, 6).join(", "))}` : ""}</div>` : ""}
       ${fullText?.snippet ? `<p class="why-row">${escapeHtml(fullText.snippet)}</p>` : ""}
       <div class="meta-line">${record.municipality ? `<span>יישוב: ${escapeHtml(record.municipality)}</span>` : ""}${record.address ? `<span>כתובת: ${escapeHtml(record.address)}</span>` : ""}${record.pages ? `<span>${record.pages} עמודים</span>` : ""}</div>
       <div class="why-row"><strong>מדוע דורג כאן:</strong> ${escapeHtml(reasons)}${escapeHtml(pages)}</div>
@@ -557,9 +581,24 @@ function bindEvents() {
   el["clear-query"].addEventListener("click", () => { el.query.value = ""; el["clear-query"].hidden = true; requestFullTextSearch(""); el.query.focus(); });
   document.querySelectorAll("[data-lens]").forEach((button) => button.addEventListener("click", () => {
     state.lens = button.dataset.lens;
+    state.subfocus = "";
+    state.focusLevel = "core";
     document.querySelectorAll("[data-lens]").forEach((item) => item.classList.toggle("active", item === button));
-    state.page = 1; applyFilters();
+    renderSubfocus(); state.page = 1; applyFilters();
   }));
+  el["subfocus-row"].addEventListener("click", (event) => {
+    const levelButton = event.target.closest("[data-focus-level]");
+    if (levelButton) {
+      state.focusLevel = levelButton.dataset.focusLevel;
+      state.subfocus = "";
+      renderSubfocus(); state.page = 1; applyFilters();
+      return;
+    }
+    const button = event.target.closest("[data-subfocus]");
+    if (!button) return;
+    state.subfocus = button.dataset.subfocus;
+    renderSubfocus(); state.page = 1; applyFilters();
+  });
   ["office-filter", "municipality-filter", "adjudicator-filter", "year-filter", "category-filter", "type-filter", "status-filter", "confidence-filter", "availability-filter", "full-text-filter", "word-filter", "ashdod-filter", "show-duplicates", "sort-select"].forEach((id) => {
     el[id].addEventListener("change", () => { state.page = 1; applyFilters(); });
   });
@@ -567,7 +606,8 @@ function bindEvents() {
     el.query.value = "";
     ["office-filter", "municipality-filter", "adjudicator-filter", "year-filter", "category-filter", "type-filter", "status-filter", "confidence-filter", "availability-filter"].forEach((id) => { el[id].value = ""; });
     ["full-text-filter", "word-filter", "ashdod-filter", "show-duplicates"].forEach((id) => { el[id].checked = false; });
-    state.lens = ""; state.fullTextMatches.clear(); state.page = 1;
+    state.lens = ""; state.subfocus = ""; state.focusLevel = "core"; state.fullTextMatches.clear(); state.page = 1;
+    renderSubfocus();
     document.querySelectorAll("[data-lens]").forEach((button) => button.classList.toggle("active", button.dataset.lens === ""));
     applyFilters();
   });
@@ -684,11 +724,14 @@ function restoreSearchFromUrl() {
   const mappings = { q: "query", office: "office-filter", city: "municipality-filter", judge: "adjudicator-filter", year: "year-filter", topic: "category-filter", type: "type-filter", status: "status-filter", confidence: "confidence-filter", availability: "availability-filter" };
   Object.entries(mappings).forEach(([key, id]) => { if (params.get(key)) el[id].value = params.get(key); });
   state.lens = params.get("lens") || "";
+  state.subfocus = params.get("subfocus") || "";
+  state.focusLevel = params.get("scope") === "all" ? "all" : "core";
   el["full-text-filter"].checked = params.get("fullText") === "1";
   el["word-filter"].checked = params.get("word") === "1";
   el["ashdod-filter"].checked = params.get("ashdod") === "1";
   el["clear-query"].hidden = !el.query.value;
   document.querySelectorAll("[data-lens]").forEach((button) => button.classList.toggle("active", button.dataset.lens === state.lens));
+  renderSubfocus();
 }
 
 async function init() {
@@ -711,7 +754,7 @@ async function init() {
     document.querySelectorAll("[data-lens]").forEach((button) => {
       const key = button.dataset.lens;
       const count = key
-        ? state.records.filter((record) => (record.focusTopics || []).includes(key) && !record.duplicateGroup && !record.isTest).length
+        ? state.records.filter((record) => (record.focusClassifications || []).some((item) => item.key === key && item.tier === "core") && !record.duplicateGroup && !record.isTest).length
         : state.records.filter((record) => !record.duplicateGroup && !record.isTest).length;
       button.textContent = `${button.textContent.replace(/\s*\([\d,]+\)$/, "")} (${count.toLocaleString("he-IL")})`;
     });
