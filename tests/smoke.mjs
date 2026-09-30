@@ -21,6 +21,9 @@ assert.equal(catalog.localPdfDocuments, 1763);
 assert.equal(catalog.docxDocuments, 1763);
 assert.equal(catalog.ocrDocuments, 20);
 assert.equal(catalog.ashdodOfficial, 58);
+assert.equal(catalog.focusRuleVersion, "2026.09.30.1");
+assert.equal(catalog.focusCounts.camera, 63);
+assert.ok(catalog.focusCounts.camera < 100, "camera focus must remain narrow");
 assert.equal(manifest.documents, 1763);
 assert.equal(manifest.tokenBucketCount, 64);
 assert.equal(manifest.pageShardCount, 64);
@@ -38,6 +41,9 @@ assert.match(app, /record\.duplicateGroup \|\| record\.isTest/);
 assert.doesNotMatch(app, /fetch\(["']https?:\/\//);
 assert.doesNotMatch(app, /קטע אופרטיבי לאיתור/);
 assert.match(app, /comparison-board/);
+assert.match(app, /record\.focusTopics/);
+assert.doesNotMatch(app, /LENSES\[state\.lens\]/);
+assert.doesNotMatch(app, /record\.operativeExcerpt, record\.sourceName/);
 assert.match(app, /השורה התחתונה/);
 assert.doesNotMatch(app, /comparison-grid/);
 assert.match(html, /class="comparison-surface"/);
@@ -66,6 +72,15 @@ const evidence = JSON.parse(fs.readFileSync(path.join(dist, manifest.evidenceFil
 assert.ok(evidence.classifications.length > 0);
 assert.ok(evidence.evidenceSnippets.length > 0);
 assert.ok(evidence.classifications.every((item) => item.topic && item.confidence && item.sectionRole && Array.isArray(item.pages)));
+
+const cameraFocused = catalog.records.find((record) => record.id === "official-1667");
+assert.ok(cameraFocused?.focusTopics.includes("camera"));
+const cameraSummary = cameraFocused.focusClassifications.find((item) => item.key === "camera");
+assert.ok(cameraSummary.pages.length > 0);
+assert.match(cameraSummary.reason, /מופעי עוגן/);
+const cameraEvidenceShard = manifest.documentEvidenceShards[cameraFocused.id];
+const cameraEvidence = JSON.parse(fs.readFileSync(path.join(dist, manifest.evidenceFiles[cameraEvidenceShard]), "utf8"))[cameraFocused.id];
+assert.ok(cameraEvidence.focusEvidence.find((item) => item.key === "camera")?.evidence.length > 0);
 
 const operative = catalog.records.find((record) => record.caseNumber === "7/254/2024");
 assert.equal(operative?.outcome, "התביעה התקבלה בעיקרה");

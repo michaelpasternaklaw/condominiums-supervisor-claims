@@ -8,15 +8,6 @@ const state = {
 const el = {};
 const worker = new Worker("search-worker.js");
 
-const LENSES = {
-  ac: ["מזגן", "מיזוג", "רעש", "רטט", "מעבה", "אקוסטי"],
-  water: ["מים", "רטיבות", "נזילה", "ניקוז", "מרזב", "צנרת", "איטום"],
-  camera: ["מצלמה", "צילום", "פרטיות", "התחקות", "האזנת סתר"],
-  roof: ["גג", "פרגולה", "גגון", "חצר", "גינה", "יונים"],
-  common: ["רכוש משותף", "שימוש ייחודי", "הצמדה", "הסגת גבול", "סילוק יד"],
-  jurisdiction: ["סמכות", "סעיף 72", "פיצול סעדים", "סעד", "מפקח"],
-};
-
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
   .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
@@ -78,7 +69,7 @@ function metadataHaystack(record) {
       record.municipality, record.address, record.plaintiffs, record.defendants,
       record.representatives, ...(record.categories || []), ...(record.keywords || []),
       ...(record.defenseTopics || []), ...(record.legalPrinciples || []),
-      record.summary, record.operativeExcerpt, record.sourceName,
+      record.summary, record.operativeExcerpt,
     ].join(" "));
   }
   return record._haystack;
@@ -91,8 +82,11 @@ function parseMetadataTokens(value) {
 
 function lensMatches(record) {
   if (!state.lens) return true;
-  const haystack = metadataHaystack(record);
-  return LENSES[state.lens].some((term) => haystack.includes(normalize(term)));
+  return (record.focusTopics || []).includes(state.lens);
+}
+
+function activeFocus(record) {
+  return (record.focusClassifications || []).find((item) => item.key === state.lens);
 }
 
 function ranking(record, tokens) {
@@ -104,7 +98,8 @@ function ranking(record, tokens) {
   if (matched) { score += matched * 85; reasons.push(`התאמה במטא־דאטה: ${matched}`); }
   const fullText = state.fullTextMatches.get(record.id);
   if (fullText) { score += 55; reasons.push(`התאמה בטקסט המלא${fullText.pages?.length ? ` בעמ׳ ${fullText.pages.slice(0, 3).join(", ")}` : ""}`); }
-  if (state.lens && lensMatches(record)) { score += 80; reasons.push("התאמה למיקוד הנבחר"); }
+  const focus = activeFocus(record);
+  if (focus) { score += 80 + Number(focus.score || 0); reasons.push(`מיקוד ${focus.label}: ${focus.reason}`); }
   if (record.ashdodRelation) { score += 25; reasons.push("זיקה לאשדוד"); }
   if (normalize(record.caseNumber) === normalize(el.query.value)) { score += 180; reasons.push("מספר תיק מדויק"); }
   return { score, reasons };
@@ -210,6 +205,7 @@ function resultCard(record) {
   const pages = fullText?.pages?.length ? ` · התאמה בעמ׳ ${fullText.pages.slice(0, 4).join(", ")}` : "";
   const reasons = (record._ranking?.reasons || []).join(" · ");
   const compareSelected = state.compare.has(record.id);
+  const focus = activeFocus(record);
   return `<article class="result-card" data-id="${escapeHtml(record.id)}">
     <div class="result-main">
       <div class="case-line"><span class="case-number">${escapeHtml(record.caseNumber)}</span>${badge(formatDate(record.date))}${badge(record.type)}</div>
@@ -218,6 +214,7 @@ function resultCard(record) {
       <p>${escapeHtml(summary)}</p>
       ${record.outcome ? `<div class="decision-result"><strong>תוצאה:</strong> ${escapeHtml(record.outcome)}${record.relief ? ` · <strong>סעדים:</strong> ${escapeHtml(record.relief)}` : ""}</div>` : ""}
       ${(record.defenseTopics || []).length ? `<div class="why-row"><strong>טענות הגנה שאותרו:</strong> ${escapeHtml(record.defenseTopics.slice(0, 4).join(" · "))}</div>` : ""}
+      ${focus ? `<div class="decision-result"><strong>מיקוד מקומי: ${escapeHtml(focus.label)}</strong> · ${escapeHtml(focus.confidence)} · ${escapeHtml(focus.reason)}${focus.pages?.length ? ` · עמ׳ ${escapeHtml(focus.pages.slice(0, 6).join(", "))}` : ""}</div>` : ""}
       ${fullText?.snippet ? `<p class="why-row">${escapeHtml(fullText.snippet)}</p>` : ""}
       <div class="meta-line">${record.municipality ? `<span>יישוב: ${escapeHtml(record.municipality)}</span>` : ""}${record.address ? `<span>כתובת: ${escapeHtml(record.address)}</span>` : ""}${record.pages ? `<span>${record.pages} עמודים</span>` : ""}</div>
       <div class="why-row"><strong>מדוע דורג כאן:</strong> ${escapeHtml(reasons)}${escapeHtml(pages)}</div>
@@ -317,6 +314,10 @@ async function openDetails(record) {
     `<li><strong>${escapeHtml(item.topic)}</strong> — ${escapeHtml(item.sectionRole || "מקטע לא סווג")} · ביטחון ${escapeHtml(item.confidence)}${item.pages?.length ? ` · עמ׳ ${escapeHtml(item.pages.join(", "))}` : ""}</li>`).join("");
   const citationLinks = (evidence.citationLinks || []).slice(0, 12).map((item) =>
     `<li>תיק ${escapeHtml(item.cited_case_number)} · אזכור בעמ׳ ${escapeHtml(item.page_number)}</li>`).join("");
+  const focusDetails = (evidence.focusEvidence || []).map((item) => {
+    const snippets = (item.evidence || []).slice(0, 3).map((hit) => `<blockquote class="page-hit"><strong>עמ׳ ${escapeHtml(hit.page)} · ${escapeHtml(hit.anchor)} · ${escapeHtml(hit.role)}</strong><br>${escapeHtml(hit.snippet)}</blockquote>`).join("");
+    return `<div><h4>${escapeHtml(item.label)} · ${escapeHtml(item.confidence)} · ציון ${escapeHtml(item.score)}</h4><p>${escapeHtml(item.reason)}</p>${snippets}</div>`;
+  }).join("");
   el["dialog-content"].innerHTML = `
     <div class="dialog-kicker">${escapeHtml(record.type)} · ${escapeHtml(record.verification)}</div>
     <h2 class="dialog-title" id="dialog-title">${escapeHtml(record.caseNumber)}</h2>
@@ -326,6 +327,7 @@ async function openDetails(record) {
     <div class="dialog-section"><h3>נושאים</h3><div class="tags">${(record.categories || []).map((tag) => badge(tag, "tag")).join("")}</div></div>
     ${(record.defenseTopics || []).length ? `<div class="dialog-section"><h3>טענות הגנה שאותרו</h3><div class="tags">${record.defenseTopics.map((tag) => badge(tag, "tag")).join("")}</div>${record.defensePages ? `<p class="operative-warning">עמודי איתור: ${escapeHtml(record.defensePages)}</p>` : ""}</div>` : ""}
     ${(record.legalPrinciples || []).length ? `<div class="dialog-section"><h3>עקרונות משפטיים שאותרו</h3><div class="tags">${record.legalPrinciples.map((tag) => badge(tag, "tag")).join("")}</div></div>` : ""}
+    ${focusDetails ? `<div class="dialog-section"><h3>מיקוד מחמיר — קטעי ראיה קצרים</h3>${focusDetails}<p class="operative-warning">גרסת מיקוד: ${escapeHtml(record.focusRuleVersion || "לא צוינה")}. הסיווג מקומי ודטרמיניסטי; יש לאמת את הקטע מול המסמך.</p></div>` : ""}
     ${classificationDetails ? `<div class="dialog-section"><h3>בסיס הסיווג המקומי</h3><ul class="classification-list">${classificationDetails}</ul><p class="operative-warning">גרסת כללים: ${escapeHtml(record.ruleVersion || "לא צוינה")}. “טענת תובע/נתבע” אינה מוצגת כקביעה של המפקח.</p></div>` : ""}
     ${citationLinks ? `<div class="dialog-section"><h3>הפניות לתיקים שאותרו בטקסט</h3><ul class="classification-list">${citationLinks}</ul></div>` : ""}
     ${record.operativeExcerpt ? `<div class="dialog-section operative-section">
@@ -706,6 +708,13 @@ async function init() {
     addOptions(el["status-filter"], state.catalog.sourceStatuses);
     addOptions(el["confidence-filter"], state.catalog.classificationConfidences || []);
     addOptions(el["availability-filter"], state.catalog.documentAvailabilities || []);
+    document.querySelectorAll("[data-lens]").forEach((button) => {
+      const key = button.dataset.lens;
+      const count = key
+        ? state.records.filter((record) => (record.focusTopics || []).includes(key) && !record.duplicateGroup && !record.isTest).length
+        : state.records.filter((record) => !record.duplicateGroup && !record.isTest).length;
+      button.textContent = `${button.textContent.replace(/\s*\([\d,]+\)$/, "")} (${count.toLocaleString("he-IL")})`;
+    });
     el["corpus-status"].textContent = `${state.catalog.totalDocuments.toLocaleString("he-IL")} רשומות · ${state.catalog.fullTextDocuments.toLocaleString("he-IL")} עם טקסט מלא · ${state.catalog.docxDocuments.toLocaleString("he-IL")} קובצי Word`;
     el["updated-at"].textContent = `עודכן ${formatDate(state.catalog.generatedAt.slice(0, 10))}`;
     el["corpus-facts"].innerHTML = `<span><strong>${state.catalog.totalDocuments.toLocaleString("he-IL")}</strong> רשומות</span><span><strong>${state.catalog.officialDocuments.toLocaleString("he-IL")}</strong> רשמיות</span><span><strong>${state.catalog.externalDocuments.toLocaleString("he-IL")}</strong> השלמות</span><span><strong>${state.catalog.localPdfDocuments.toLocaleString("he-IL")}</strong> קובצי PDF</span><span><strong>${state.catalog.docxDocuments.toLocaleString("he-IL")}</strong> קובצי Word עריכים</span><span><strong>${state.catalog.fullTextDocuments.toLocaleString("he-IL")}</strong> טקסטים מלאים</span><span><strong>${state.catalog.ocrDocuments.toLocaleString("he-IL")}</strong> טקסטים שהומרו ב־OCR</span><span><strong>${state.catalog.ashdodOfficial}</strong> רשומות אשדוד רשמיות</span>`;

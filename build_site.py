@@ -27,6 +27,7 @@ FULL_EXPORT = PROJECT_ROOT / "outputs/legal_decisions_database/full_export/compl
 DOCX_EXPORT = PROJECT_ROOT / "outputs/legal_decisions_database/full_export/docx_export.csv"
 FULL_CLASSIFICATION = PROJECT_ROOT / "outputs/legal_decisions_database/full_text_classification.csv"
 PIPELINE_EXPORT = REPOSITORY / "pipeline-public.json"
+FOCUS_EXPORT = REPOSITORY / "focus-public.json"
 TOKEN_BUCKETS = 64
 PAGE_SHARDS = 64
 EVIDENCE_SHARDS = 64
@@ -370,6 +371,8 @@ def main() -> None:
     curated_records = load_curated()
     pipeline = json.loads(PIPELINE_EXPORT.read_text(encoding="utf-8")) if PIPELINE_EXPORT.exists() else {"version": "", "records": {}}
     pipeline_by_id = pipeline.get("records", {})
+    focus = json.loads(FOCUS_EXPORT.read_text(encoding="utf-8")) if FOCUS_EXPORT.exists() else {"version": "", "records": {}, "counts": {}}
+    focus_by_id = focus.get("records", {})
 
     if len(master_rows) != 1799:
         raise RuntimeError(f"Expected 1,799 master rows, found {len(master_rows)}")
@@ -381,6 +384,8 @@ def main() -> None:
     official_count = sum(row.get("סטטוס") == "רשמי" for row in master_rows)
     if official_count != 1765:
         raise RuntimeError(f"Expected 1,765 official rows, found {official_count}")
+    if focus.get("documents") != 1763 or not focus.get("version"):
+        raise RuntimeError("Focused classification export is missing or stale")
 
     duplicate_by_id = {row["מזהה רשומה"]: row.get("קבוצת כפילות", "") for row in duplicate_rows}
     export_by_id = {row["מזהה רשומה"]: row for row in export_rows}
@@ -423,6 +428,9 @@ def main() -> None:
         docx_exported = docx_by_id.get(row["מזהה רשומה"], {})
         classified = classification_by_id.get(row["מזהה רשומה"], {})
         pipeline_record = pipeline_by_id.get(row["מזהה רשומה"], {})
+        focus_items = focus_by_id.get(row["מזהה רשומה"], [])
+        focus_summaries = [{key: item.get(key) for key in ("key", "label", "confidence", "score", "sectionRole", "pages", "reason")}
+                           for item in focus_items]
         exported_pdf = Path(exported["PDF מקומי מלא"]) if exported.get("PDF מקומי מלא") else None
         exported_text = Path(exported["טקסט מקומי"]) if exported.get("טקסט מקומי") else None
         rank, verification = source_strength(row, curated, status, bool(exported_text and exported_text.is_file()))
@@ -533,6 +541,9 @@ def main() -> None:
             "documentAvailability": "עותק מקומי" if local_pdf else ("מסמך מלא במקור הציבורי" if pdf_url else "מטא־דאטה בלבד"),
             "documentUrl": pipeline_record.get("documentUrl") or source_url,
             "localAssetUrl": local_pdf,
+            "focusClassifications": focus_summaries,
+            "focusTopics": [item.get("key") for item in focus_summaries],
+            "focusRuleVersion": focus.get("version", ""),
         }
         if pipeline_record:
             evidence_shard = stable_bucket(row["מזהה רשומה"], EVIDENCE_SHARDS)
@@ -541,6 +552,7 @@ def main() -> None:
                 "evidenceSnippets": pipeline_record.get("evidenceSnippets", []),
                 "classifications": pipeline_record.get("classifications", []),
                 "citationLinks": pipeline_record.get("citationLinks", []),
+                "focusEvidence": focus_items,
             }
         catalog.append(record)
 
@@ -565,6 +577,8 @@ def main() -> None:
         "sourceStatuses": sorted({item["sourceStatus"] for item in catalog if item["sourceStatus"]}),
         "classificationConfidences": [value for value in ("גבוהה", "סבירה", "לבדיקה") if any(item["classificationConfidence"] == value for item in catalog)],
         "documentAvailabilities": sorted({item["documentAvailability"] for item in catalog if item["documentAvailability"]}),
+        "focusRuleVersion": focus.get("version", ""),
+        "focusCounts": focus.get("counts", {}),
         "records": catalog,
     }
     (data_dir / "catalog.json").write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -573,7 +587,10 @@ def main() -> None:
     token_files = []
     for index, bucket in enumerate(token_index):
         name = f"token-{index:02d}.json"
-        compact = {token: [[doc, sorted(pages)] for doc, pages in postings.items()] for token, postings in bucket.items()}
+        compact = {
+            token: [[doc, sorted(bucket[token][doc])] for doc in sorted(bucket[token])]
+            for token in sorted(bucket)
+        }
         (search_dir / name).write_text(json.dumps(compact, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         expected_search.add(name)
         token_files.append(f"data/search/{name}")
@@ -632,6 +649,7 @@ def main() -> None:
         "fullText": len(doc_shards), "pdfs": len(expected_pdfs), "docx": len(expected_docx),
         "pdfBytes": copied_pdf_bytes, "docxBytes": copied_docx_bytes, "tokenBuckets": TOKEN_BUCKETS,
         "pageShards": PAGE_SHARDS, "evidenceShards": EVIDENCE_SHARDS,
+        "focusRuleVersion": focus.get("version", ""), "focusCounts": focus.get("counts", {}),
         "distBytes": dist_bytes, "maxFileBytes": max(path.stat().st_size for path in files),
         "limits": {"siteBytes": MAX_SITE_BYTES, "fileBytes": MAX_FILE_BYTES},
         "ashdod": {"official": ashdod_official, "reconstructed": ashdod_reconstructed, "leads": ashdod_leads},

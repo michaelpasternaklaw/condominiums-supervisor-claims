@@ -1,0 +1,135 @@
+{
+  "version": "2026.09.30.1",
+  "window_chars": 240,
+  "max_evidence": 4,
+  "role_weights": {
+    "background": 0.9,
+    "plaintiff_argument": 0.75,
+    "defendant_argument": 0.75,
+    "evidence": 1.15,
+    "analysis": 1.65,
+    "holding": 2.05,
+    "operative": 2.25,
+    "costs": 0.8
+  },
+  "topics": {
+    "camera": {
+      "label": "מצלמות ופרטיות",
+      "anchors": [
+        {"label": "מצלמה", "pattern": "מצלמ(?:ה|ות|ת|תו|תה|ותיו|ותיה|ותיהם|ותן)?", "weight": 3.4},
+        {"label": "פגיעה מפורשת בפרטיות", "pattern": "חוק\\s+הגנת\\s+הפרטיות|פגיעה\\s+בפרטיות|הזכות\\s+לפרטיות|בילוש\\s+או\\s+התחקות|רשות\\s+היחיד", "weight": 3.1}
+      ],
+      "support": [
+        "רכוש\\s+משותף|בית\\s+משותף",
+        "התקינ|הציב|הסיר|סילוק|פירוק|כיוו|זווית|עדש",
+        "צילמ|מעקב|פרטיות|הסכמ"
+      ],
+      "required_anchor": "מצלמ(?:ה|ות|ת|תו|תה|ותיו|ותיה|ותיהם|ותן)?",
+      "required_support": ["התקינ|הציב|הסיר|סילוק|פירוק|כיוו|זווית|עדש|צילמ|מעקב|פרטיות|הסכמ"],
+      "negative": [
+        "צילום\\s+(?:api|מסמך|המסמך|התיק|נספח|עמוד)|תצלום\\s+אוויר",
+        "צילום\\s+עם\\s+מצלמ|בדיקה\\s+באמצעות\\s+מצלמ|מצלמ(?:ה|ת)\\s+(?:ביוב|צנרת|תרמית)"
+      ],
+      "minimum_score": 6.0,
+      "high_score": 12.0,
+      "minimum_anchor_hits": 2,
+      "minimum_support_hits": 1,
+      "minimum_required_support_hits": 1,
+      "single_decisive_allowed": true
+    },
+    "ac": {
+      "label": "מזגן, רעש ורטט",
+      "anchors": [
+        {"label": "מזגן או מיזוג", "pattern": "מזגנ(?:ים|י|ו|ה)?|מזגן|מיזוג\\s+אוויר|יחידת\\s+מיזוג|מערכת\\s+מיזוג", "weight": 3.0},
+        {"label": "מעבה או מדחס", "pattern": "מעב(?:ה|ים)|מדחס(?:ים)?", "weight": 2.7}
+      ],
+      "support": [
+        "רעש|רטט|מטרד|דציבל|אקוסט",
+        "רכוש\\s+משותף|חזית|קיר\\s+חיצוני|גג",
+        "הסיר|סילוק|התקינ|העתק|צו\\s+מניעה"
+      ],
+      "negative": [],
+      "minimum_score": 5.5,
+      "high_score": 11.0,
+      "minimum_anchor_hits": 2,
+      "minimum_support_hits": 1,
+      "single_decisive_allowed": true
+    },
+    "water": {
+      "label": "מים, רטיבות וניקוז",
+      "anchors": [
+        {"label": "נזילה או רטיבות", "pattern": "נזיל(?:ה|ות|ת)?|רטיב(?:ות|ה)", "weight": 2.8},
+        {"label": "צנרת או צינור", "pattern": "צנרת|צינור(?:ות)?", "weight": 2.5},
+        {"label": "ניקוז, מרזב או איטום", "pattern": "ניקוז|מרזב(?:ים)?|איטום|מי\\s+גשם", "weight": 2.5}
+      ],
+      "support": [
+        "חדיר(?:ת|ה)\\s+מים|הצפ(?:ה|ות)|עובש|נזק",
+        "תיקו|לתקן|אחריות|חוות\\s+דעת|מומחה",
+        "רכוש\\s+משותף|גג|קיר|דירה"
+      ],
+      "negative": ["חשבון\\s+מים|מד\\s+מים"],
+      "minimum_score": 6.0,
+      "high_score": 12.0,
+      "minimum_anchor_hits": 2,
+      "minimum_support_hits": 1,
+      "single_decisive_allowed": true
+    },
+    "roof": {
+      "label": "גגות, פרגולות, חצרות וגינות",
+      "anchors": [
+        {"label": "גג או גגון", "pattern": "גג(?:ות|ון|ונים)?", "weight": 2.4},
+        {"label": "פרגולה", "pattern": "פרגול(?:ה|ות)", "weight": 3.0},
+        {"label": "חצר או גינה", "pattern": "חצר(?:ות)?|גינ(?:ה|ות)", "weight": 2.3}
+      ],
+      "support": [
+        "רכוש\\s+משותף|הצמד|שימוש\\s+ייחודי",
+        "היתר|בני(?:ה|יה)|הרחב|סגיר",
+        "הריס|הסיר|סילוק|השבת\\s+המצב"
+      ],
+      "negative": [],
+      "minimum_score": 6.0,
+      "high_score": 12.0,
+      "minimum_anchor_hits": 2,
+      "minimum_support_hits": 1,
+      "single_decisive_allowed": true
+    },
+    "common": {
+      "label": "רכוש משותף ושימוש ייחודי",
+      "anchors": [
+        {"label": "רכוש משותף", "pattern": "רכוש\\s+משותף", "weight": 2.1},
+        {"label": "שימוש ייחודי", "pattern": "שימוש\\s+(?:ייחודי|בלעדי)", "weight": 2.8},
+        {"label": "הצמדה", "pattern": "הצמד(?:ה|ות|ת|ו|ה)", "weight": 2.3}
+      ],
+      "support": [
+        "הסכמ|תקנון|אסיפת\\s+דיירים",
+        "סילוק|הסגת\\s+גבול|חזקה",
+        "שינוי|בני(?:ה|יה)|הרחב|מחובר"
+      ],
+      "negative": [],
+      "minimum_score": 7.0,
+      "high_score": 14.0,
+      "minimum_anchor_hits": 3,
+      "minimum_support_hits": 1,
+      "single_decisive_allowed": false
+    },
+    "jurisdiction": {
+      "label": "סמכות ופיצול סעדים",
+      "anchors": [
+        {"label": "סמכות המפקח", "pattern": "סמכות(?:ו|ה)?\\s+של\\s+המפקח|סמכות\\s+המפקח|חוסר\\s+סמכות|סמכות\\s+עניינית", "weight": 3.2},
+        {"label": "סעיף 72", "pattern": "סעיף\\s+72(?:\\s*\\([א-ת]\\))?", "weight": 3.0},
+        {"label": "פיצול סעדים", "pattern": "פיצול\\s+סעדים|היתר\\s+לפיצול", "weight": 3.4}
+      ],
+      "support": [
+        "המפקח|בית\\s+משפט|ערכאה",
+        "סעד\\s+כספי|סעד\\s+הצהרתי|פיצוי",
+        "חוק\\s+המקרקעין|תביעה"
+      ],
+      "negative": [],
+      "minimum_score": 5.0,
+      "high_score": 10.0,
+      "minimum_anchor_hits": 1,
+      "minimum_support_hits": 1,
+      "single_decisive_allowed": true
+    }
+  }
+}
