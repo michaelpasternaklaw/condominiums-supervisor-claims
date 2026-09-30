@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.30.5",
+  "version": "2026.09.30.6",
   "window_chars": 240,
   "max_evidence": 4,
   "role_weights": {
@@ -114,23 +114,51 @@
       "single_decisive_allowed": false
     },
     "common": {
-      "label": "רכוש משותף ושימוש ייחודי",
+      "label": "רכוש משותף",
       "anchors": [
-        {"label": "רכוש משותף", "pattern": "רכוש\\s+משותף", "weight": 2.1},
-        {"label": "שימוש או חזקה ייחודיים", "pattern": "שימוש\\s+(?:ייחודי|בלעדי)|(?:החזקה|חזקה)\\s+ייחודית", "weight": 2.8},
-        {"label": "הצמדה", "pattern": "הצמד(?:ה|ות|ת|ו|ה)", "weight": 2.3}
+        {"label": "רכוש משותף", "pattern": "רכוש\\s+משותף", "weight": 2.6}
       ],
       "support": [
-        "הסכמ|תקנון|אסיפת\\s+דיירים",
-        "סילוק|הסגת\\s+גבול|חזקה",
-        "שינוי|בני(?:ה|יה)|הרחב|מחובר"
+        "סעיף\\s+(?:52|55|58|72)|תקנון|נציגות|אסיפת\\s+דיירים",
+        "שימוש|שינוי|הצמד|הסכמ|חזקה|בני(?:ה|יה)|הרחב",
+        "סילוק|צו\\s+(?:עשה|מניעה)|תיקו|תחזוק|הוצאות|דמי\\s+שימוש"
       ],
+      "required_anchor": "רכוש\\s+משותף",
+      "required_support": ["סעיף\\s+(?:52|55|58|72)|תקנון|נציגות|שימוש|שינוי|הצמד|הסכמ|חזקה|סילוק|צו\\s+(?:עשה|מניעה)|תיקו|תחזוק|הוצאות|דמי\\s+שימוש"],
       "negative": [],
-      "minimum_score": 7.0,
-      "high_score": 14.0,
-      "minimum_anchor_hits": 3,
+      "minimum_score": 15.0,
+      "high_score": 28.0,
+      "minimum_anchor_hits": 4,
       "minimum_support_hits": 1,
+      "minimum_required_support_hits": 3,
+      "minimum_pages": 2,
+      "minimum_decisive_hits": 1,
+      "non_decisive_score": 30.0,
       "single_decisive_allowed": false
+    },
+    "exclusive": {
+      "label": "שימוש וחזקה ייחודיים",
+      "anchors": [
+        {"label": "שימוש ייחודי או בלעדי", "pattern": "שימוש\\s+(?:ייחודי|יחודי|בלעדי)", "weight": 3.4},
+        {"label": "חזקה ייחודית או בלעדית", "pattern": "(?:החזקה|חזקה)\\s+(?:ייחודית|יחודית|בלעדית)|תפיסת\\s+חזקה\\s+(?:ייחודית|יחודית)", "weight": 3.4}
+      ],
+      "support": [
+        "רכוש\\s+משותף|הצמד|חצר|גינה|מחסן|גגון|חניה",
+        "הסכמ|רישיון|רשיון|הרשא|תקנון|שיהוי",
+        "סילוק\\s+יד|פינוי|דמי\\s+שימוש|צו\\s+(?:עשה|מניעה)|השבת\\s+המצב"
+      ],
+      "required_anchor": "שימוש\\s+(?:ייחודי|יחודי|בלעדי)|(?:החזקה|חזקה)\\s+(?:ייחודית|יחודית|בלעדית)|תפיסת\\s+חזקה\\s+(?:ייחודית|יחודית)",
+      "required_support": ["רכוש\\s+משותף|הצמד|חצר|גינה|מחסן|גגון|חניה|הסכמ|רישיון|רשיון|הרשא|תקנון|סילוק\\s+יד|פינוי|דמי\\s+שימוש"],
+      "negative": [],
+      "minimum_score": 8.0,
+      "high_score": 17.0,
+      "minimum_anchor_hits": 2,
+      "minimum_support_hits": 1,
+      "minimum_required_support_hits": 1,
+      "minimum_pages": 1,
+      "minimum_decisive_hits": 1,
+      "non_decisive_score": 20.0,
+      "single_decisive_allowed": true
     },
     "trespass": {
       "label": "סילוק יד, הסגת גבול וחזקה ייחודית",
